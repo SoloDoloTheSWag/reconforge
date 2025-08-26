@@ -1,0 +1,705 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Scan Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="bg-gradient-secondary text-white rounded p-4 shadow">
+            <div class="row align-items-center">
+                <div class="col-lg-8">
+                    <div class="d-flex align-items-center mb-2">
+                        <a href="{{ url_for('scans_page') }}" class="btn btn-outline-light btn-sm me-3">
+                            <i class="bi bi-arrow-left"></i> Back
+                        </a>
+                        <h1 class="display-6 fw-bold mb-0">
+                            <i class="bi bi-file-earmark-text"></i> Scan Details
+                        </h1>
+                    </div>
+                    <p class="lead mb-0">{{ scan.scan_type.replace('_', ' ').title() }} - {{ scan.target }}</p>
+                    <p class="mb-0">
+                        <i class="bi bi-calendar"></i> {{ scan.start_time.strftime('%Y-%m-%d %H:%M:%S') if scan.start_time }}
+                        {% if scan.end_time %}
+                            - {{ scan.end_time.strftime('%H:%M:%S') }}
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="col-lg-4 text-end">
+                    <div class="mb-2">
+                        {% if scan.status == 'completed' %}
+                            <span class="badge bg-success fs-6">
+                                <i class="bi bi-check-circle"></i> Completed
+                            </span>
+                        {% elif scan.status == 'running' %}
+                            <span class="badge bg-primary fs-6">
+                                <i class="bi bi-play-circle"></i> Running
+                            </span>
+                        {% elif scan.status == 'failed' %}
+                            <span class="badge bg-danger fs-6">
+                                <i class="bi bi-x-circle"></i> Failed
+                            </span>
+                        {% else %}
+                            <span class="badge bg-secondary fs-6">{{ scan.status.title() }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-outline-light" onclick="exportScan()">
+                            <i class="bi bi-download"></i> Export
+                        </button>
+                        <button type="button" class="btn btn-outline-light" onclick="rerunScan()">
+                            <i class="bi bi-arrow-repeat"></i> Rerun
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Scan Summary Cards -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            Duration
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {% if scan.end_time and scan.start_time %}
+                                {% set duration = (scan.end_time - scan.start_time).total_seconds() %}
+                                {% if duration < 60 %}
+                                    {{ "%.0f"|format(duration) }}s
+                                {% elif duration < 3600 %}
+                                    {{ "%.0f"|format(duration/60) }}m
+                                {% else %}
+                                    {{ "%.1f"|format(duration/3600) }}h
+                                {% endif %}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-clock fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            Subdomains
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {{ scan.total_subdomains or 0 }}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-search fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            Vulnerabilities
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {{ scan.total_vulns or 0 }}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-bug fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Exports
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {{ exports|length if exports else 0 }}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-download fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Scan Configuration -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-gear"></i> Scan Configuration
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Target:</strong></td>
+                                <td><code>{{ scan.target }}</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Type:</strong></td>
+                                <td>{{ scan.scan_type.replace('_', ' ').title() }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Status:</strong></td>
+                                <td>{{ scan.status.title() }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Started:</strong></td>
+                                <td>{{ scan.start_time.strftime('%Y-%m-%d %H:%M:%S') if scan.start_time else 'N/A' }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Completed:</strong></td>
+                                <td>{{ scan.end_time.strftime('%Y-%m-%d %H:%M:%S') if scan.end_time else 'N/A' }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Scan ID:</strong></td>
+                                <td>{{ scan.id }}</td>
+                            </tr>
+                            {% if scan.config %}
+                                {% for key, value in scan.config.items() %}
+                                    <tr>
+                                        <td><strong>{{ key.replace('_', ' ').title() }}:</strong></td>
+                                        <td>{{ value if value is not none else 'N/A' }}</td>
+                                    </tr>
+                                {% endfor %}
+                            {% endif %}
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Results Tabs -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <ul class="nav nav-tabs card-header-tabs" id="resultsTab" role="tablist">
+                    {% if subdomains %}
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="subdomains-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#subdomains" type="button" role="tab">
+                                <i class="bi bi-search"></i> Subdomains ({{ subdomains|length }})
+                            </button>
+                        </li>
+                    {% endif %}
+                    {% if vulnerabilities %}
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link {% if not subdomains %}active{% endif %}" 
+                                    id="vulnerabilities-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#vulnerabilities" type="button" role="tab">
+                                <i class="bi bi-bug"></i> Vulnerabilities ({{ vulnerabilities|length }})
+                            </button>
+                        </li>
+                    {% endif %}
+                    {% if pentest_results %}
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link {% if not subdomains and not vulnerabilities %}active{% endif %}" 
+                                    id="pentests-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#pentests" type="button" role="tab">
+                                <i class="bi bi-unlock"></i> Pentests ({{ pentest_results|length }})
+                            </button>
+                        </li>
+                    {% endif %}
+                    {% if exports %}
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="exports-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#exports" type="button" role="tab">
+                                <i class="bi bi-download"></i> Exports ({{ exports|length }})
+                            </button>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+            <div class="card-body">
+                <div class="tab-content" id="resultsTabContent">
+                    <!-- Subdomains Tab -->
+                    {% if subdomains %}
+                        <div class="tab-pane fade show active" id="subdomains" role="tabpanel">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Subdomain</th>
+                                            <th>IP Address</th>
+                                            <th>Discovery Source</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for subdomain in subdomains %}
+                                            <tr>
+                                                <td><strong>{{ subdomain.subdomain }}</strong></td>
+                                                <td>
+                                                    {% if subdomain.ip_address %}
+                                                        <code>{{ subdomain.ip_address }}</code>
+                                                    {% else %}
+                                                        <span class="text-muted">-</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-secondary">{{ subdomain.discovery_source }}</span>
+                                                </td>
+                                                <td>
+                                                    <div class="btn-group btn-group-sm">
+                                                        <button type="button" class="btn btn-outline-primary" 
+                                                                onclick="scanSubdomain('{{ subdomain.subdomain }}')">
+                                                            <i class="bi bi-bug"></i> Scan
+                                                        </button>
+                                                        <button type="button" class="btn btn-outline-info" 
+                                                                onclick="copyToClipboard('{{ subdomain.subdomain }}')">
+                                                            <i class="bi bi-clipboard"></i> Copy
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    <!-- Vulnerabilities Tab -->
+                    {% if vulnerabilities %}
+                        <div class="tab-pane fade {% if not subdomains %}show active{% endif %}" 
+                             id="vulnerabilities" role="tabpanel">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Title</th>
+                                            <th>Severity</th>
+                                            <th>Target</th>
+                                            <th>Type</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for vuln in vulnerabilities %}
+                                            <tr>
+                                                <td>
+                                                    <strong>{{ vuln.title }}</strong>
+                                                    {% if vuln.description %}
+                                                        <br><small class="text-muted">{{ vuln.description[:100] }}...</small>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    {% set severity_class = {
+                                                        'critical': 'bg-danger',
+                                                        'high': 'bg-warning text-dark',
+                                                        'medium': 'bg-info',
+                                                        'low': 'bg-secondary',
+                                                        'info': 'bg-light text-dark'
+                                                    } %}
+                                                    <span class="badge {{ severity_class.get(vuln.severity, 'bg-secondary') }}">
+                                                        {{ vuln.severity.upper() }}
+                                                    </span>
+                                                </td>
+                                                <td><code>{{ vuln.subdomain }}</code></td>
+                                                <td>
+                                                    <span class="badge bg-secondary">{{ vuln.vulnerability_type }}</span>
+                                                </td>
+                                                <td>
+                                                    <div class="btn-group btn-group-sm">
+                                                        <button type="button" class="btn btn-outline-info" 
+                                                                onclick="showVulnDetails({{ loop.index0 }})">
+                                                            <i class="bi bi-eye"></i> Details
+                                                        </button>
+                                                        <button type="button" class="btn btn-outline-danger" 
+                                                                onclick="pentestTarget('{{ vuln.subdomain }}')">
+                                                            <i class="bi bi-unlock"></i> Pentest
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    <!-- Pentests Tab -->
+                    {% if pentest_results %}
+                        <div class="tab-pane fade {% if not subdomains and not vulnerabilities %}show active{% endif %}" 
+                             id="pentests" role="tabpanel">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Test Type</th>
+                                            <th>Target</th>
+                                            <th>Success</th>
+                                            <th>Severity</th>
+                                            <th>Impact</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for test in pentest_results %}
+                                            <tr>
+                                                <td><strong>{{ test.test_type.replace('_', ' ').upper() }}</strong></td>
+                                                <td><code>{{ test.target }}</code></td>
+                                                <td>
+                                                    {% if test.success %}
+                                                        <span class="badge bg-danger">
+                                                            <i class="bi bi-unlock"></i> EXPLOITED
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="badge bg-success">
+                                                            <i class="bi bi-shield-check"></i> SAFE
+                                                        </span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    {% if test.success and test.severity %}
+                                                        {% set severity_class = {
+                                                            'critical': 'bg-danger',
+                                                            'high': 'bg-warning text-dark',
+                                                            'medium': 'bg-info',
+                                                            'low': 'bg-secondary'
+                                                        } %}
+                                                        <span class="badge {{ severity_class.get(test.severity, 'bg-secondary') }}">
+                                                            {{ test.severity.upper() }}
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="text-muted">-</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    {% if test.impact %}
+                                                        <small>{{ test.impact[:80] }}...</small>
+                                                    {% else %}
+                                                        <span class="text-muted">-</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    <div class="btn-group btn-group-sm">
+                                                        <button type="button" class="btn btn-outline-info" 
+                                                                onclick="showTestDetails({{ loop.index0 }})">
+                                                            <i class="bi bi-eye"></i> Details
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    <!-- Exports Tab -->
+                    {% if exports %}
+                        <div class="tab-pane fade" id="exports" role="tabpanel">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Format</th>
+                                            <th>File Path</th>
+                                            <th>Size</th>
+                                            <th>Created</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for export in exports %}
+                                            <tr>
+                                                <td>
+                                                    <span class="badge bg-primary">{{ export.format.upper() }}</span>
+                                                </td>
+                                                <td><code>{{ export.file_path }}</code></td>
+                                                <td>{{ "%.2f"|format(export.file_size/1024) }} KB</td>
+                                                <td>{{ export.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                                <td>
+                                                    <a href="{{ url_for('download_export', export_id=export.id) }}" 
+                                                       class="btn btn-outline-primary btn-sm">
+                                                        <i class="bi bi-download"></i> Download
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <!-- No results message -->
+                {% if not subdomains and not vulnerabilities and not pentest_results %}
+                    <div class="text-center text-muted py-5">
+                        <i class="bi bi-inbox display-4"></i>
+                        <h4 class="mt-3">No results found</h4>
+                        <p class="mb-4">This scan didn't produce any results yet.</p>
+                        {% if scan.status == 'running' %}
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2">Scan is still running...</p>
+                        {% elif scan.status == 'failed' %}
+                            <div class="alert alert-danger d-inline-block">
+                                <i class="bi bi-x-circle"></i> Scan failed to complete
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Store data for JavaScript functions
+const scanData = {
+    id: {{ scan.id }},
+    target: "{{ scan.target }}",
+    scan_type: "{{ scan.scan_type }}",
+    vulnerabilities: {{ vulnerabilities|tojson if vulnerabilities else '[]' }},
+    pentest_results: {{ pentest_results|tojson if pentest_results else '[]' }}
+};
+
+// Export scan
+function exportScan() {
+    const format = prompt('Export format (json, csv, txt):', 'json');
+    if (!format) return;
+    
+    const url = `/api/scans/${scanData.id}/export?format=${format}`;
+    window.open(url, '_blank');
+}
+
+// Rerun scan
+function rerunScan() {
+    if (!confirm('Are you sure you want to rerun this scan with the same configuration?')) {
+        return;
+    }
+    
+    fetch(`/api/scans/${scanData.id}/rerun`, { method: 'POST' })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('success', 'Scan restarted successfully');
+            setTimeout(() => location.reload(), 2000);
+        } else {
+            showAlert('error', data.error || 'Failed to rerun scan');
+        }
+    })
+    .catch(error => {
+        showAlert('error', 'Failed to rerun scan: ' + error.message);
+    });
+}
+
+// Scan specific subdomain
+function scanSubdomain(subdomain) {
+    const url = new URL('{{ url_for("scan_page") }}', window.location.origin);
+    url.searchParams.set('target', subdomain);
+    window.open(url.toString(), '_blank');
+}
+
+// Copy to clipboard
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        showAlert('success', `Copied ${text} to clipboard`);
+    }).catch(() => {
+        showAlert('error', 'Failed to copy to clipboard');
+    });
+}
+
+// Show vulnerability details
+function showVulnDetails(index) {
+    const vuln = scanData.vulnerabilities[index];
+    if (!vuln) return;
+    
+    let detailsHtml = `
+        <h5>${vuln.title}</h5>
+        <p><strong>Severity:</strong> <span class="badge bg-${getSeverityColor(vuln.severity)}">${vuln.severity.toUpperCase()}</span></p>
+        <p><strong>Target:</strong> <code>${vuln.subdomain}</code></p>
+        <p><strong>Type:</strong> ${vuln.vulnerability_type}</p>
+    `;
+    
+    if (vuln.description) {
+        detailsHtml += `<p><strong>Description:</strong> ${vuln.description}</p>`;
+    }
+    
+    if (vuln.url) {
+        detailsHtml += `<p><strong>URL:</strong> <a href="${vuln.url}" target="_blank">${vuln.url}</a></p>`;
+    }
+    
+    if (vuln.cvss_score) {
+        detailsHtml += `<p><strong>CVSS Score:</strong> ${vuln.cvss_score}</p>`;
+    }
+    
+    if (vuln.cve_id) {
+        detailsHtml += `<p><strong>CVE:</strong> <a href="https://cve.mitre.org/cgi-bin/cvename.cgi?name=${vuln.cve_id}" target="_blank">${vuln.cve_id}</a></p>`;
+    }
+    
+    showAlert('info', detailsHtml);
+}
+
+// Show test details
+function showTestDetails(index) {
+    const test = scanData.pentest_results[index];
+    if (!test) return;
+    
+    let detailsHtml = `
+        <h5>${test.test_type.replace('_', ' ').toUpperCase()}</h5>
+        <p><strong>Target:</strong> <code>${test.target}</code></p>
+        <p><strong>Success:</strong> ${test.success ? 
+            '<span class="badge bg-danger">EXPLOITED</span>' : 
+            '<span class="badge bg-success">SAFE</span>'}</p>
+    `;
+    
+    if (test.command) {
+        detailsHtml += `<p><strong>Command:</strong> <code>${test.command}</code></p>`;
+    }
+    
+    if (test.output) {
+        detailsHtml += `<p><strong>Output:</strong></p><pre><code>${test.output}</code></pre>`;
+    }
+    
+    if (test.success) {
+        if (test.severity) {
+            detailsHtml += `<p><strong>Severity:</strong> <span class="badge bg-${getSeverityColor(test.severity)}">${test.severity.toUpperCase()}</span></p>`;
+        }
+        
+        if (test.impact) {
+            detailsHtml += `<p><strong>Impact:</strong> ${test.impact}</p>`;
+        }
+        
+        if (test.recommendations) {
+            detailsHtml += `<p><strong>Recommendations:</strong> ${test.recommendations}</p>`;
+        }
+    }
+    
+    showAlert('info', detailsHtml);
+}
+
+// Pentest specific target
+function pentestTarget(target) {
+    const url = new URL('{{ url_for("pentest_page") }}', window.location.origin);
+    url.searchParams.set('target', target);
+    window.open(url.toString(), '_blank');
+}
+
+// Get severity color
+function getSeverityColor(severity) {
+    const severityColors = {
+        'critical': 'danger',
+        'high': 'warning',
+        'medium': 'info',
+        'low': 'secondary',
+        'info': 'light'
+    };
+    return severityColors[severity] || 'secondary';
+}
+
+// Auto-refresh for running scans
+function autoRefresh() {
+    {% if scan.status == 'running' %}
+        setTimeout(() => {
+            location.reload();
+        }, 30000); // Refresh every 30 seconds for running scans
+    {% endif %}
+}
+
+// Initialize page
+window.addEventListener('load', function() {
+    autoRefresh();
+});
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.bg-gradient-secondary {
+    background: linear-gradient(45deg, #858796, #5a5c69);
+}
+
+.border-left-primary {
+    border-left: 0.25rem solid #4e73df !important;
+}
+
+.border-left-info {
+    border-left: 0.25rem solid #36b9cc !important;
+}
+
+.border-left-warning {
+    border-left: 0.25rem solid #f6c23e !important;
+}
+
+.border-left-success {
+    border-left: 0.25rem solid #1cc88a !important;
+}
+
+.table th {
+    border-top: none;
+}
+
+.btn-group-sm > .btn, .btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+.fa-2x {
+    font-size: 2em;
+}
+
+.text-gray-800 {
+    color: #5a5c69;
+}
+
+.text-gray-300 {
+    color: #dddfeb;
+}
+
+.nav-tabs .nav-link.active {
+    background-color: #fff;
+    border-color: #dee2e6 #dee2e6 #fff;
+}
+
+code {
+    font-size: 0.9em;
+}
+</style>
+{% endblock %}

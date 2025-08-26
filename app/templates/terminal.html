@@ -1,0 +1,726 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="bg-gradient-dark text-white rounded p-4 shadow">
+            <div class="row align-items-center">
+                <div class="col-lg-8">
+                    <h1 class="display-5 fw-bold mb-2">
+                        <i class="bi bi-terminal"></i> Web Terminal
+                    </h1>
+                    <p class="lead mb-0">Interactive command-line interface for manual testing and tool execution</p>
+                    <p class="mb-0">Execute penetration testing commands directly from the web interface</p>
+                </div>
+                <div class="col-lg-4 text-end">
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-outline-light" onclick="clearTerminal()">
+                            <i class="bi bi-trash"></i> Clear
+                        </button>
+                        <button type="button" class="btn btn-outline-light" onclick="toggleFullscreen()">
+                            <i class="bi bi-arrows-fullscreen"></i> Fullscreen
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Legal Warning -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="alert alert-danger border-danger" role="alert">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-exclamation-octagon-fill fs-3 me-3"></i>
+                <div>
+                    <h5 class="alert-heading mb-2">⚖️ Legal and Security Warning</h5>
+                    <p class="mb-0">
+                        <strong>This terminal provides direct access to system commands.</strong>
+                        Only execute commands against systems you own or have explicit authorization to test.
+                        Unauthorized use may violate laws and regulations. Use responsibly and ethically.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Terminal Interface -->
+<div class="row">
+    <div class="col-xl-9 mb-4">
+        <div class="card shadow h-100" id="terminalCard">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-dark">
+                    <i class="bi bi-terminal"></i> Terminal Session
+                </h6>
+                <div>
+                    <span class="badge bg-success" id="connectionStatus">
+                        <i class="bi bi-circle-fill"></i> Connected
+                    </span>
+                    <button type="button" class="btn btn-sm btn-outline-danger ms-2" onclick="killSession()">
+                        <i class="bi bi-x-circle"></i> Kill Session
+                    </button>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div id="terminal" class="terminal-container">
+                    <!-- Terminal will be initialized here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Terminal Controls -->
+    <div class="col-xl-3 mb-4">
+        <!-- Quick Commands -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-lightning"></i> Quick Commands
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button type="button" class="btn btn-outline-primary btn-sm" 
+                            onclick="executeCommand('ls -la')">
+                        <i class="bi bi-folder"></i> List Files
+                    </button>
+                    <button type="button" class="btn btn-outline-info btn-sm" 
+                            onclick="executeCommand('pwd')">
+                        <i class="bi bi-geo"></i> Current Directory
+                    </button>
+                    <button type="button" class="btn btn-outline-success btn-sm" 
+                            onclick="executeCommand('whoami')">
+                        <i class="bi bi-person"></i> Current User
+                    </button>
+                    <button type="button" class="btn btn-outline-warning btn-sm" 
+                            onclick="executeCommand('ps aux | head -20')">
+                        <i class="bi bi-cpu"></i> Running Processes
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" 
+                            onclick="executeCommand('df -h')">
+                        <i class="bi bi-hdd"></i> Disk Usage
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reconnaissance Tools -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-info">
+                    <i class="bi bi-search"></i> Recon Tools
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="targetInput" class="form-label">Target:</label>
+                    <input type="text" class="form-control form-control-sm" 
+                           id="targetInput" placeholder="example.com">
+                </div>
+                <div class="d-grid gap-2">
+                    <button type="button" class="btn btn-outline-info btn-sm" 
+                            onclick="runReconCommand('nmap -sn')">
+                        <i class="bi bi-radar"></i> Host Discovery
+                    </button>
+                    <button type="button" class="btn btn-outline-info btn-sm" 
+                            onclick="runReconCommand('nmap -sV -sC')">
+                        <i class="bi bi-shield"></i> Port Scan
+                    </button>
+                    <button type="button" class="btn btn-outline-info btn-sm" 
+                            onclick="runReconCommand('subfinder -d')">
+                        <i class="bi bi-search"></i> Subfinder
+                    </button>
+                    <button type="button" class="btn btn-outline-info btn-sm" 
+                            onclick="runReconCommand('httpx -title -status-code -tech-detect')">
+                        <i class="bi bi-globe"></i> HTTP Probe
+                    </button>
+                    <button type="button" class="btn btn-outline-info btn-sm" 
+                            onclick="runReconCommand('nuclei -t')">
+                        <i class="bi bi-bug"></i> Nuclei Scan
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Terminal Settings -->
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-secondary">
+                    <i class="bi bi-gear"></i> Terminal Settings
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="fontSizeRange" class="form-label">Font Size:</label>
+                    <input type="range" class="form-range" id="fontSizeRange" 
+                           min="10" max="20" value="14" onchange="changeFontSize()">
+                    <div class="text-center">
+                        <small class="text-muted" id="fontSizeLabel">14px</small>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="themeSelect" class="form-label">Theme:</label>
+                    <select class="form-control form-control-sm" id="themeSelect" onchange="changeTheme()">
+                        <option value="dark">Dark</option>
+                        <option value="light">Light</option>
+                        <option value="matrix">Matrix</option>
+                        <option value="hacker">Hacker</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="autoScrollCheck" 
+                               checked onchange="toggleAutoScroll()">
+                        <label class="form-check-label" for="autoScrollCheck">
+                            Auto-scroll
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="timestampCheck" 
+                               onchange="toggleTimestamp()">
+                        <label class="form-check-label" for="timestampCheck">
+                            Show timestamps
+                        </label>
+                    </div>
+                </div>
+                <div class="d-grid gap-2">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" 
+                            onclick="saveSession()">
+                        <i class="bi bi-save"></i> Save Session
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" 
+                            onclick="exportHistory()">
+                        <i class="bi bi-download"></i> Export History
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Command History Modal -->
+<div class="modal fade" id="historyModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-clock-history"></i> Command History
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Command</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody">
+                            <!-- Command history will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Include xterm.js library -->
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
+
+<script>
+let terminal;
+let fitAddon;
+let websocket;
+let commandHistory = [];
+let currentTheme = 'dark';
+let autoScroll = true;
+let showTimestamp = false;
+
+// Terminal themes
+const themes = {
+    dark: {
+        background: '#1a1a1a',
+        foreground: '#ffffff',
+        cursor: '#ffffff',
+        selection: '#ffffff40'
+    },
+    light: {
+        background: '#ffffff',
+        foreground: '#000000',
+        cursor: '#000000',
+        selection: '#00000040'
+    },
+    matrix: {
+        background: '#000000',
+        foreground: '#00ff00',
+        cursor: '#00ff00',
+        selection: '#00ff0040'
+    },
+    hacker: {
+        background: '#0c0c0c',
+        foreground: '#00ff41',
+        cursor: '#00ff41',
+        selection: '#00ff4140'
+    }
+};
+
+// Initialize terminal
+function initTerminal() {
+    // Create terminal instance
+    terminal = new Terminal({
+        theme: themes[currentTheme],
+        fontFamily: 'Consolas, Monaco, "Courier New", monospace',
+        fontSize: 14,
+        rows: 24,
+        cols: 80,
+        cursorBlink: true,
+        convertEol: true
+    });
+    
+    // Create fit addon
+    fitAddon = new FitAddon.FitAddon();
+    terminal.loadAddon(fitAddon);
+    
+    // Open terminal in container
+    terminal.open(document.getElementById('terminal'));
+    fitAddon.fit();
+    
+    // Connect to WebSocket for terminal communication
+    connectWebSocket();
+    
+    // Handle terminal input
+    terminal.onData(data => {
+        if (websocket && websocket.readyState === WebSocket.OPEN) {
+            websocket.send(JSON.stringify({
+                type: 'terminal_input',
+                data: data
+            }));
+        }
+    });
+    
+    // Handle terminal resize
+    window.addEventListener('resize', () => {
+        fitAddon.fit();
+    });
+    
+    // Initial welcome message
+    terminal.writeln('\x1b[1;32m╔══════════════════════════════════════════════════════════════════════════════╗\x1b[0m');
+    terminal.writeln('\x1b[1;32m║                           ReconForge Web Terminal                            ║\x1b[0m');
+    terminal.writeln('\x1b[1;32m║                     Professional Penetration Testing Suite                  ║\x1b[0m');
+    terminal.writeln('\x1b[1;32m╚══════════════════════════════════════════════════════════════════════════════╝\x1b[0m');
+    terminal.writeln('');
+    terminal.writeln('\x1b[1;33mWelcome to ReconForge Web Terminal\x1b[0m');
+    terminal.writeln('\x1b[90mType commands below or use the quick actions panel on the right.\x1b[0m');
+    terminal.writeln('\x1b[90mWarning: Only test systems you own or have explicit authorization to test.\x1b[0m');
+    terminal.writeln('');
+    terminal.write('\x1b[1;32mreconforge@web-terminal\x1b[0m:\x1b[1;34m~\x1b[0m$ ');
+}
+
+// Connect to WebSocket for terminal communication
+function connectWebSocket() {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws/terminal`;
+    
+    websocket = new WebSocket(wsUrl);
+    
+    websocket.onopen = function() {
+        updateConnectionStatus(true);
+        console.log('Terminal WebSocket connected');
+    };
+    
+    websocket.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        handleTerminalMessage(data);
+    };
+    
+    websocket.onclose = function() {
+        updateConnectionStatus(false);
+        console.log('Terminal WebSocket disconnected');
+        // Attempt to reconnect after 3 seconds
+        setTimeout(connectWebSocket, 3000);
+    };
+    
+    websocket.onerror = function(error) {
+        console.error('Terminal WebSocket error:', error);
+        updateConnectionStatus(false);
+    };
+}
+
+// Handle incoming terminal messages
+function handleTerminalMessage(data) {
+    switch (data.type) {
+        case 'terminal_output':
+            if (showTimestamp) {
+                const timestamp = new Date().toLocaleTimeString();
+                terminal.write(`\x1b[90m[${timestamp}]\x1b[0m `);
+            }
+            terminal.write(data.data);
+            break;
+            
+        case 'command_complete':
+            addToHistory(data.command, data.exit_code);
+            terminal.write('\r\n\x1b[1;32mreconforge@web-terminal\x1b[0m:\x1b[1;34m~\x1b[0m$ ');
+            break;
+            
+        case 'error':
+            terminal.write(`\x1b[1;31mError: ${data.message}\x1b[0m\r\n`);
+            break;
+    }
+    
+    if (autoScroll) {
+        terminal.scrollToBottom();
+    }
+}
+
+// Execute command
+function executeCommand(command) {
+    if (!command.trim()) return;
+    
+    terminal.write(command + '\r\n');
+    
+    if (websocket && websocket.readyState === WebSocket.OPEN) {
+        websocket.send(JSON.stringify({
+            type: 'execute_command',
+            command: command
+        }));
+    } else {
+        terminal.write('\x1b[1;31mError: Terminal not connected\x1b[0m\r\n');
+    }
+}
+
+// Run reconnaissance command with target
+function runReconCommand(baseCommand) {
+    const target = document.getElementById('targetInput').value.trim();
+    if (!target) {
+        showAlert('warning', 'Please enter a target first');
+        return;
+    }
+    
+    let command = `${baseCommand} ${target}`;
+    
+    // Add common flags for specific tools
+    if (baseCommand.includes('nuclei')) {
+        command += ' -u http://' + target;
+    } else if (baseCommand.includes('httpx')) {
+        command = `echo "${target}" | ${baseCommand}`;
+    }
+    
+    executeCommand(command);
+}
+
+// Add command to history
+function addToHistory(command, exitCode) {
+    commandHistory.unshift({
+        timestamp: new Date(),
+        command: command,
+        exitCode: exitCode,
+        status: exitCode === 0 ? 'success' : 'failed'
+    });
+    
+    // Limit history to 100 commands
+    if (commandHistory.length > 100) {
+        commandHistory = commandHistory.slice(0, 100);
+    }
+}
+
+// Clear terminal
+function clearTerminal() {
+    if (terminal) {
+        terminal.clear();
+        terminal.write('\x1b[1;32mreconforge@web-terminal\x1b[0m:\x1b[1;34m~\x1b[0m$ ');
+    }
+}
+
+// Toggle fullscreen
+function toggleFullscreen() {
+    const card = document.getElementById('terminalCard');
+    
+    if (!document.fullscreenElement) {
+        card.requestFullscreen().then(() => {
+            card.classList.add('fullscreen-terminal');
+            setTimeout(() => fitAddon.fit(), 100);
+        });
+    } else {
+        document.exitFullscreen().then(() => {
+            card.classList.remove('fullscreen-terminal');
+            setTimeout(() => fitAddon.fit(), 100);
+        });
+    }
+}
+
+// Kill terminal session
+function killSession() {
+    if (!confirm('Kill current terminal session? This will close all running processes.')) {
+        return;
+    }
+    
+    if (websocket && websocket.readyState === WebSocket.OPEN) {
+        websocket.send(JSON.stringify({
+            type: 'kill_session'
+        }));
+    }
+    
+    clearTerminal();
+    showAlert('warning', 'Terminal session killed');
+}
+
+// Change font size
+function changeFontSize() {
+    const fontSize = document.getElementById('fontSizeRange').value;
+    document.getElementById('fontSizeLabel').textContent = fontSize + 'px';
+    
+    if (terminal) {
+        terminal.setOption('fontSize', parseInt(fontSize));
+        fitAddon.fit();
+    }
+}
+
+// Change theme
+function changeTheme() {
+    currentTheme = document.getElementById('themeSelect').value;
+    
+    if (terminal) {
+        terminal.setOption('theme', themes[currentTheme]);
+    }
+}
+
+// Toggle auto-scroll
+function toggleAutoScroll() {
+    autoScroll = document.getElementById('autoScrollCheck').checked;
+}
+
+// Toggle timestamp
+function toggleTimestamp() {
+    showTimestamp = document.getElementById('timestampCheck').checked;
+}
+
+// Update connection status
+function updateConnectionStatus(connected) {
+    const status = document.getElementById('connectionStatus');
+    if (connected) {
+        status.innerHTML = '<i class="bi bi-circle-fill"></i> Connected';
+        status.className = 'badge bg-success';
+    } else {
+        status.innerHTML = '<i class="bi bi-circle-fill"></i> Disconnected';
+        status.className = 'badge bg-danger';
+    }
+}
+
+// Save session
+function saveSession() {
+    const sessionData = {
+        history: commandHistory,
+        timestamp: new Date().toISOString()
+    };
+    
+    const blob = new Blob([JSON.stringify(sessionData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `terminal-session-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    showAlert('success', 'Terminal session saved');
+}
+
+// Export command history
+function exportHistory() {
+    if (commandHistory.length === 0) {
+        showAlert('warning', 'No command history to export');
+        return;
+    }
+    
+    let content = 'Timestamp,Command,Exit Code,Status\n';
+    commandHistory.forEach(cmd => {
+        content += `"${cmd.timestamp.toISOString()}","${cmd.command.replace(/"/g, '""')}","${cmd.exitCode}","${cmd.status}"\n`;
+    });
+    
+    const blob = new Blob([content], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `command-history-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    showAlert('success', 'Command history exported');
+}
+
+// Show command history
+function showHistory() {
+    const tbody = document.getElementById('historyTableBody');
+    tbody.innerHTML = '';
+    
+    commandHistory.forEach((cmd, index) => {
+        const row = tbody.insertRow();
+        row.insertCell(0).innerHTML = `<small>${cmd.timestamp.toLocaleString()}</small>`;
+        row.insertCell(1).innerHTML = `<code>${cmd.command}</code>`;
+        row.insertCell(2).innerHTML = cmd.status === 'success' ? 
+            '<span class="badge bg-success">Success</span>' : 
+            '<span class="badge bg-danger">Failed</span>';
+        row.insertCell(3).innerHTML = `
+            <button class="btn btn-outline-primary btn-sm" onclick="executeCommand('${cmd.command.replace(/'/g, '\\\')}')">
+                <i class="bi bi-arrow-repeat"></i> Rerun
+            </button>
+        `;
+    });
+    
+    const modal = new bootstrap.Modal(document.getElementById('historyModal'));
+    modal.show();
+}
+
+// Initialize page
+window.addEventListener('load', function() {
+    initTerminal();
+    
+    // Handle Ctrl+C, Ctrl+L shortcuts
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey) {
+            switch (e.key) {
+                case 'l':
+                case 'L':
+                    e.preventDefault();
+                    clearTerminal();
+                    break;
+                case 'h':
+                case 'H':
+                    e.preventDefault();
+                    showHistory();
+                    break;
+            }
+        }
+    });
+});
+
+// Handle page unload
+window.addEventListener('beforeunload', function() {
+    if (websocket) {
+        websocket.close();
+    }
+});
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css">
+
+<style>
+.bg-gradient-dark {
+    background: linear-gradient(45deg, #343a40, #212529);
+}
+
+.terminal-container {
+    height: 500px;
+    background-color: #1a1a1a;
+    border-radius: 0 0 0.375rem 0.375rem;
+    overflow: hidden;
+}
+
+.fullscreen-terminal .terminal-container {
+    height: calc(100vh - 100px);
+}
+
+.xterm {
+    padding: 10px;
+}
+
+.xterm-viewport {
+    background-color: transparent !important;
+}
+
+.btn-group-sm > .btn, .btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+/* Terminal fullscreen styles */
+.fullscreen-terminal {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 9999 !important;
+    background: #1a1a1a;
+}
+
+.fullscreen-terminal .card-body {
+    padding: 0 !important;
+}
+
+.fullscreen-terminal .terminal-container {
+    height: calc(100vh - 60px) !important;
+}
+
+/* Custom scrollbar for terminal */
+.xterm-viewport::-webkit-scrollbar {
+    width: 8px;
+}
+
+.xterm-viewport::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.xterm-viewport::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+}
+
+.xterm-viewport::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+/* Form controls styling */
+.form-range {
+    height: 1.5rem;
+}
+
+.form-control-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+/* Alert styling for terminal */
+.alert-heading {
+    margin-bottom: 0.5rem;
+}
+
+/* Button spacing */
+.d-grid .btn + .btn {
+    margin-top: 0.25rem;
+}
+
+/* Terminal themes for different backgrounds */
+.terminal-theme-dark {
+    background-color: #1a1a1a;
+}
+
+.terminal-theme-light {
+    background-color: #ffffff;
+}
+
+.terminal-theme-matrix {
+    background-color: #000000;
+}
+
+.terminal-theme-hacker {
+    background-color: #0c0c0c;
+}
+</style>
+{% endblock %}

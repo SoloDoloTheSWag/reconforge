@@ -1,0 +1,659 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="bg-gradient-warning text-white rounded p-4 shadow">
+            <div class="row align-items-center">
+                <div class="col-lg-8">
+                    <h1 class="display-5 fw-bold mb-2">
+                        <i class="bi bi-bug"></i> Vulnerability Scanning
+                    </h1>
+                    <p class="lead mb-0">Comprehensive security assessment with Nuclei and custom scanners</p>
+                    <p class="mb-0">Detect vulnerabilities, misconfigurations, and security issues across your targets</p>
+                </div>
+                <div class="col-lg-4 text-end">
+                    <a href="{{ url_for('scans_page') }}" class="btn btn-outline-light btn-lg">
+                        <i class="bi bi-list-ul"></i> View Scans
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Scanning Form -->
+<div class="row">
+    <div class="col-xl-8 mb-4">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-warning">
+                    <i class="bi bi-play-circle"></i> Start Vulnerability Scan
+                </h6>
+            </div>
+            <div class="card-body">
+                <form id="scanForm">
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="targets" class="form-label">
+                                <i class="bi bi-bullseye"></i> Target URLs
+                            </label>
+                            <textarea class="form-control form-control-lg" 
+                                      id="targets" 
+                                      name="targets"
+                                      rows="4" 
+                                      placeholder="https://example.com&#10;https://subdomain.example.com&#10;http://app.example.com" 
+                                      required></textarea>
+                            <div class="form-text">Enter one URL per line. Supports both HTTP and HTTPS targets.</div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="severity" class="form-label">
+                                <i class="bi bi-exclamation-triangle"></i> Minimum Severity
+                            </label>
+                            <select class="form-control" id="severity" name="severity">
+                                <option value="info">All Severities</option>
+                                <option value="low">Low and above</option>
+                                <option value="medium" selected>Medium and above</option>
+                                <option value="high">High and above</option>
+                                <option value="critical">Critical only</option>
+                            </select>
+                            <div class="form-text">Filter results by minimum severity level</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="scanners" class="form-label">
+                                <i class="bi bi-collection"></i> Scanners
+                            </label>
+                            <select class="form-control" id="scanners" name="scanners" multiple>
+                                {% for scanner_name, scanner_info in scanners.items() %}
+                                <option value="{{ scanner_name }}" {% if scanner_info.enabled %}selected{% endif %}>
+                                    {{ scanner_info.description or scanner_name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Select specific scanners (leave empty for all)</div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="templates" class="form-label">
+                                <i class="bi bi-file-code"></i> Custom Templates (Optional)
+                            </label>
+                            <input type="file" class="form-control" id="templates" name="templates" multiple accept=".yaml,.yml">
+                            <div class="form-text">Upload custom Nuclei templates for specialized scanning</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="outputFormat" class="form-label">
+                                <i class="bi bi-download"></i> Output Format
+                            </label>
+                            <select class="form-control" id="outputFormat" name="format">
+                                <option value="json">JSON</option>
+                                <option value="csv">CSV</option>
+                                <option value="txt">Text</option>
+                            </select>
+                            <div class="form-text">Choose format for downloading results</div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-12 mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="followRedirects" name="follow_redirects" checked>
+                                <label class="form-check-label" for="followRedirects">
+                                    Follow HTTP redirects
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="verifyTLS" name="verify_tls" checked>
+                                <label class="form-check-label" for="verifyTLS">
+                                    Verify TLS certificates
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                <button type="button" class="btn btn-secondary me-md-2" onclick="resetForm()">
+                                    <i class="bi bi-arrow-clockwise"></i> Reset
+                                </button>
+                                <button type="submit" class="btn btn-warning btn-lg text-white">
+                                    <i class="bi bi-bug"></i> Start Scan
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Available Scanners -->
+    <div class="col-xl-4 mb-4">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-warning">
+                    <i class="bi bi-tools"></i> Available Scanners
+                </h6>
+            </div>
+            <div class="card-body">
+                {% for scanner_name, scanner_info in scanners.items() %}
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                        <strong>{{ scanner_name.replace('_', ' ').title() }}</strong>
+                        <br>
+                        <small class="text-muted">{{ scanner_info.description or 'No description available' }}</small>
+                    </div>
+                    <div>
+                        {% if scanner_info.enabled %}
+                            <span class="badge bg-success">
+                                <i class="bi bi-check-circle"></i> Ready
+                            </span>
+                        {% else %}
+                            <span class="badge bg-warning">
+                                <i class="bi bi-exclamation-triangle"></i> Disabled
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% if not loop.last %}
+                    <hr class="my-2">
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Scanning Tips -->
+        <div class="card shadow mt-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-info">
+                    <i class="bi bi-lightbulb"></i> Scanning Tips
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <h6><i class="bi bi-shield-exclamation"></i> Severity Levels</h6>
+                    <small class="text-muted">
+                        <strong>Critical:</strong> Immediate threat, exploit available<br>
+                        <strong>High:</strong> Significant security risk<br>
+                        <strong>Medium:</strong> Moderate risk, needs attention<br>
+                        <strong>Low:</strong> Minor issues or informational
+                    </small>
+                </div>
+                <div class="mb-3">
+                    <h6><i class="bi bi-clock"></i> Performance</h6>
+                    <small class="text-muted">
+                        Scan time depends on target size and templates used. 
+                        Typical web app scan takes 5-15 minutes.
+                    </small>
+                </div>
+                <div>
+                    <h6><i class="bi bi-exclamation-triangle"></i> Legal Notice</h6>
+                    <small class="text-muted text-warning">
+                        Only scan systems you own or have explicit permission to test. 
+                        Unauthorized scanning is illegal.
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Progress Section (Hidden initially) -->
+<div id="progressSection" class="row mt-4" style="display: none;">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-success">
+                    <i class="bi bi-activity"></i> Scan Progress
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span id="progressStatus">Starting vulnerability scan...</span>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="stopScan()">
+                        <i class="bi bi-stop-circle"></i> Stop
+                    </button>
+                </div>
+                <div class="progress mb-3">
+                    <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                         role="progressbar" style="width: 0%"></div>
+                </div>
+                <div id="progressLogs" class="border rounded p-3 bg-light" style="height: 200px; overflow-y: auto; font-family: monospace; font-size: 0.9em;">
+                    <!-- Progress logs will appear here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Results Section (Hidden initially) -->
+<div id="resultsSection" class="row mt-4" style="display: none;">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-success">
+                    <i class="bi bi-check-circle"></i> Scan Results
+                </h6>
+                <div>
+                    <button type="button" class="btn btn-sm btn-outline-primary me-2" onclick="downloadResults()">
+                        <i class="bi bi-download"></i> Download
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="startNewScan()">
+                        <i class="bi bi-plus-circle"></i> New Scan
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="resultsSummary" class="mb-4">
+                    <!-- Results summary will appear here -->
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover" id="resultsTable">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Severity</th>
+                                <th>Target</th>
+                                <th>Type</th>
+                                <th>Template</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultsTableBody">
+                            <!-- Results will appear here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentScanUuid = null;
+let scanResults = [];
+
+// Form submission
+document.getElementById('scanForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    startScan();
+});
+
+// Start vulnerability scan
+function startScan() {
+    const formData = new FormData(document.getElementById('scanForm'));
+    const targetsText = formData.get('targets').trim();
+    
+    if (!targetsText) {
+        showAlert('error', 'Please enter at least one target URL');
+        return;
+    }
+    
+    const targets = targetsText.split('\n').map(t => t.trim()).filter(t => t);
+    
+    // Show progress section
+    document.getElementById('progressSection').style.display = 'block';
+    document.getElementById('resultsSection').style.display = 'none';
+    
+    // Scroll to progress section
+    document.getElementById('progressSection').scrollIntoView({ behavior: 'smooth' });
+    
+    // Prepare request data
+    const selectedScanners = Array.from(document.getElementById('scanners').selectedOptions).map(option => option.value);
+    
+    const requestData = {
+        targets: targets,
+        severity: formData.get('severity'),
+        scanners: selectedScanners,
+        format: formData.get('format'),
+        follow_redirects: formData.has('follow_redirects'),
+        verify_tls: formData.has('verify_tls')
+    };
+    
+    // Start scan
+    fetch('/api/scan', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            showAlert('error', data.error);
+            document.getElementById('progressSection').style.display = 'none';
+        } else {
+            currentScanUuid = data.scan_uuid;
+            updateProgress('Vulnerability scan started', 10);
+            logProgress('Starting vulnerability scan for ' + targets.length + ' targets...');
+        }
+    })
+    .catch(error => {
+        showAlert('error', 'Failed to start scan: ' + error.message);
+        document.getElementById('progressSection').style.display = 'none';
+    });
+}
+
+// Stop scan
+function stopScan() {
+    if (currentScanUuid) {
+        fetch('/api/stop-scan/' + currentScanUuid, { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            showAlert('info', 'Vulnerability scan stopped');
+            document.getElementById('progressSection').style.display = 'none';
+            currentScanUuid = null;
+        })
+        .catch(error => {
+            showAlert('error', 'Failed to stop scan');
+        });
+    }
+}
+
+// Update progress
+function updateProgress(status, percentage) {
+    document.getElementById('progressStatus').textContent = status;
+    document.getElementById('progressBar').style.width = percentage + '%';
+}
+
+// Log progress message
+function logProgress(message) {
+    const logs = document.getElementById('progressLogs');
+    const timestamp = new Date().toLocaleTimeString();
+    logs.innerHTML += `[${timestamp}] ${message}\n`;
+    logs.scrollTop = logs.scrollHeight;
+}
+
+// Get severity badge class
+function getSeverityBadgeClass(severity) {
+    const severityClasses = {
+        'critical': 'bg-danger',
+        'high': 'bg-warning text-dark',
+        'medium': 'bg-info',
+        'low': 'bg-secondary',
+        'info': 'bg-light text-dark'
+    };
+    return severityClasses[severity] || 'bg-secondary';
+}
+
+// Display results
+function displayResults(results) {
+    scanResults = results;
+    
+    // Hide progress, show results
+    document.getElementById('progressSection').style.display = 'none';
+    document.getElementById('resultsSection').style.display = 'block';
+    
+    // Calculate summary stats
+    const severityStats = {
+        critical: 0,
+        high: 0,
+        medium: 0,
+        low: 0,
+        info: 0
+    };
+    
+    results.forEach(result => {
+        if (severityStats.hasOwnProperty(result.severity)) {
+            severityStats[result.severity]++;
+        }
+    });
+    
+    const uniqueTargets = new Set(results.map(r => r.target)).size;
+    
+    // Update summary
+    const summary = document.getElementById('resultsSummary');
+    summary.innerHTML = `
+        <div class="row text-center mb-3">
+            <div class="col-md-3">
+                <div class="border rounded p-3">
+                    <h4 class="text-primary">${results.length}</h4>
+                    <small class="text-muted">Total Vulnerabilities</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="border rounded p-3">
+                    <h4 class="text-info">${uniqueTargets}</h4>
+                    <small class="text-muted">Targets Scanned</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="border rounded p-3">
+                    <h4 class="text-danger">${severityStats.critical + severityStats.high}</h4>
+                    <small class="text-muted">Critical/High</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="border rounded p-3">
+                    <h4 class="text-warning">${severityStats.medium}</h4>
+                    <small class="text-muted">Medium</small>
+                </div>
+            </div>
+        </div>
+        <div class="row text-center">
+            <div class="col-12">
+                <h6>Severity Distribution:</h6>
+                ${Object.entries(severityStats).map(([sev, count]) => 
+                    count > 0 ? `<span class="badge ${getSeverityBadgeClass(sev)} me-2">${sev.toUpperCase()}: ${count}</span>` : ''
+                ).join('')}
+            </div>
+        </div>
+    `;
+    
+    // Update results table
+    const tbody = document.getElementById('resultsTableBody');
+    tbody.innerHTML = '';
+    
+    results.forEach((result, index) => {
+        const row = tbody.insertRow();
+        
+        // Title
+        const titleCell = row.insertCell(0);
+        titleCell.innerHTML = `
+            <strong>${result.title}</strong>
+            ${result.description ? `<br><small class="text-muted">${result.description.substring(0, 100)}${result.description.length > 100 ? '...' : ''}</small>` : ''}
+        `;
+        
+        // Severity
+        const severityCell = row.insertCell(1);
+        severityCell.innerHTML = `<span class="badge ${getSeverityBadgeClass(result.severity)}">${result.severity.toUpperCase()}</span>`;
+        
+        // Target
+        row.insertCell(2).innerHTML = `<code>${result.target}</code>`;
+        
+        // Type
+        row.insertCell(3).innerHTML = `<span class="badge bg-secondary">${result.vulnerability_type || result.type || 'Unknown'}</span>`;
+        
+        // Template
+        row.insertCell(4).innerHTML = result.template_id ? `<small><code>${result.template_id}</code></small>` : '<span class="text-muted">-</span>';
+        
+        // Actions
+        const actionsCell = row.insertCell(5);
+        actionsCell.innerHTML = `
+            <div class="btn-group btn-group-sm" role="group">
+                <button type="button" class="btn btn-outline-info" onclick="showVulnDetails(${index})">
+                    <i class="bi bi-eye"></i> Details
+                </button>
+                <button type="button" class="btn btn-outline-danger" onclick="pentestTarget('${result.target}')">
+                    <i class="bi bi-unlock"></i> Pentest
+                </button>
+            </div>
+        `;
+    });
+    
+    // Scroll to results
+    document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth' });
+    
+    showAlert('success', `Scan completed! Found ${results.length} vulnerabilities across ${uniqueTargets} targets`);
+}
+
+// Show vulnerability details
+function showVulnDetails(index) {
+    const vuln = scanResults[index];
+    
+    let detailsHtml = `
+        <h5>${vuln.title}</h5>
+        <p><strong>Severity:</strong> <span class="badge ${getSeverityBadgeClass(vuln.severity)}">${vuln.severity.toUpperCase()}</span></p>
+        <p><strong>Target:</strong> <code>${vuln.target}</code></p>
+        <p><strong>Type:</strong> ${vuln.vulnerability_type || vuln.type || 'Unknown'}</p>
+    `;
+    
+    if (vuln.description) {
+        detailsHtml += `<p><strong>Description:</strong> ${vuln.description}</p>`;
+    }
+    
+    if (vuln.url) {
+        detailsHtml += `<p><strong>URL:</strong> <a href="${vuln.url}" target="_blank">${vuln.url}</a></p>`;
+    }
+    
+    if (vuln.method) {
+        detailsHtml += `<p><strong>Method:</strong> <code>${vuln.method}</code></p>`;
+    }
+    
+    if (vuln.payload) {
+        detailsHtml += `<p><strong>Payload:</strong> <pre><code>${vuln.payload}</code></pre></p>`;
+    }
+    
+    if (vuln.cvss_score) {
+        detailsHtml += `<p><strong>CVSS Score:</strong> ${vuln.cvss_score}</p>`;
+    }
+    
+    if (vuln.cve_id) {
+        detailsHtml += `<p><strong>CVE:</strong> <a href="https://cve.mitre.org/cgi-bin/cvename.cgi?name=${vuln.cve_id}" target="_blank">${vuln.cve_id}</a></p>`;
+    }
+    
+    if (vuln.reference_urls && vuln.reference_urls.length > 0) {
+        detailsHtml += `<p><strong>References:</strong></p><ul>`;
+        vuln.reference_urls.forEach(url => {
+            detailsHtml += `<li><a href="${url}" target="_blank">${url}</a></li>`;
+        });
+        detailsHtml += `</ul>`;
+    }
+    
+    showAlert('info', detailsHtml);
+}
+
+// Pentest specific target
+function pentestTarget(target) {
+    const url = new URL('{{ url_for("pentest_page") }}', window.location.origin);
+    url.searchParams.set('target', target);
+    window.open(url.toString(), '_blank');
+}
+
+// Download results
+function downloadResults() {
+    if (scanResults.length === 0) {
+        showAlert('warning', 'No results to download');
+        return;
+    }
+    
+    const format = document.getElementById('outputFormat').value;
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+    const filename = `vulnerability_scan_${timestamp}.${format}`;
+    
+    let content = '';
+    let mimeType = '';
+    
+    if (format === 'json') {
+        content = JSON.stringify(scanResults, null, 2);
+        mimeType = 'application/json';
+    } else if (format === 'csv') {
+        content = 'Title,Severity,Target,Type,Description,URL,Template\n';
+        content += scanResults.map(r => `"${r.title}","${r.severity}","${r.target}","${r.vulnerability_type || r.type || ''}","${(r.description || '').replace(/"/g, '""')}","${r.url || ''}","${r.template_id || ''}"`).join('\n');
+        mimeType = 'text/csv';
+    } else {
+        content = scanResults.map(r => `[${r.severity.toUpperCase()}] ${r.title} - ${r.target}`).join('\n');
+        mimeType = 'text/plain';
+    }
+    
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+// Reset form
+function resetForm() {
+    document.getElementById('scanForm').reset();
+    document.getElementById('progressSection').style.display = 'none';
+    document.getElementById('resultsSection').style.display = 'none';
+    currentScanUuid = null;
+    scanResults = [];
+}
+
+// Start new scan
+function startNewScan() {
+    resetForm();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// WebSocket message handling
+function handleWebSocketMessage(data) {
+    if (data.type === 'scan_progress' && data.scan_uuid === currentScanUuid) {
+        updateProgress(data.status, data.percentage);
+        logProgress(data.message);
+    } else if (data.type === 'scan_complete' && data.scan_uuid === currentScanUuid) {
+        displayResults(data.results);
+    } else if (data.type === 'scan_error' && data.scan_uuid === currentScanUuid) {
+        showAlert('error', 'Scan failed: ' + data.error);
+        document.getElementById('progressSection').style.display = 'none';
+        currentScanUuid = null;
+    }
+}
+
+// Initialize page
+window.addEventListener('load', function() {
+    // Check if target is provided via URL parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetParam = urlParams.get('target');
+    if (targetParam) {
+        document.getElementById('targets').value = targetParam;
+    }
+});
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.bg-gradient-warning {
+    background: linear-gradient(45deg, #f6c23e, #dda20a);
+}
+
+#progressLogs {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.table th {
+    border-top: none;
+}
+
+.btn-group-sm > .btn, .btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+code {
+    font-size: 0.9em;
+}
+
+pre code {
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+</style>
+{% endblock %}

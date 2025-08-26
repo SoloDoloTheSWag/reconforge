@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="hero-section rounded shadow-sm p-4">
+            <div class="row align-items-center">
+                <div class="col-lg-8">
+                    <h1 class="display-5 fw-bold mb-3">
+                        <i class="bi bi-shield-check-fill"></i> ReconForge Dashboard
+                    </h1>
+                    <p class="lead mb-2">Professional Reconnaissance and Penetration Testing Platform</p>
+                    <p class="mb-0">Automated subdomain discovery, vulnerability scanning, and penetration testing</p>
+                </div>
+                <div class="col-lg-4 text-end">
+                    <div class="btn-group" role="group">
+                        <a href="/discover" class="btn btn-light btn-lg me-2">
+                            <i class="bi bi-search"></i> Start Discovery
+                        </a>
+                        <a href="/scan" class="btn btn-outline-light btn-lg">
+                            <i class="bi bi-bug"></i> Scan Now
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <div class="text-uppercase fw-bold text-primary small">
+                            Total Scans
+                        </div>
+                        <div class="h5 mb-0 fw-bold text-dark" id="totalScans">
+                            {% if stats %}{{ stats.total_scans }}{% else %}0{% endif %}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-list-ul text-muted" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <div class="text-uppercase fw-bold text-success small">
+                            Active Scans
+                        </div>
+                        <div class="h5 mb-0 fw-bold text-dark" id="activeScans">
+                            {% if stats %}{{ stats.active_scans }}{% else %}0{% endif %}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-play-circle text-muted" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <div class="text-uppercase fw-bold text-info small">
+                            Available Tools
+                        </div>
+                        <div class="row align-items-center">
+                            <div class="col-auto">
+                                <div class="h5 mb-0 fw-bold text-dark" id="availableTools">
+                                    {% if stats %}{{ stats.available_tools }}{% else %}0{% endif %}
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="progress" style="height: 6px;">
+                                    {% set progress = (stats.available_tools / stats.total_tools * 100) if stats and stats.total_tools > 0 else 0 %}
+                                    <div class="progress-bar bg-info" role="progressbar" 
+                                         style="width: {{ progress|round(0) }}%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-tools text-muted" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <div class="text-uppercase fw-bold text-warning small">
+                            System Status
+                        </div>
+                        <div class="h5 mb-0 fw-bold text-dark">
+                            <span class="badge bg-success">Online</span>
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-cpu text-muted" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mb-4">
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-lightning-charge"></i> Quick Actions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <a href="/discover" class="btn btn-outline-primary w-100 py-3">
+                            <i class="bi bi-search mb-2" style="font-size: 1.5rem; display: block;"></i>
+                            <div class="fw-bold">Subdomain Discovery</div>
+                            <small class="text-muted">Find subdomains using multiple sources</small>
+                        </a>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <a href="/scan" class="btn btn-outline-success w-100 py-3">
+                            <i class="bi bi-bug mb-2" style="font-size: 1.5rem; display: block;"></i>
+                            <div class="fw-bold">Vulnerability Scan</div>
+                            <small class="text-muted">Scan for security vulnerabilities</small>
+                        </a>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <a href="/pentest" class="btn btn-outline-warning w-100 py-3">
+                            <i class="bi bi-unlock mb-2" style="font-size: 1.5rem; display: block;"></i>
+                            <div class="fw-bold">Penetration Test</div>
+                            <small class="text-muted">Execute penetration testing modules</small>
+                        </a>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <a href="/scans" class="btn btn-outline-info w-100 py-3">
+                            <i class="bi bi-list-ul mb-2" style="font-size: 1.5rem; display: block;"></i>
+                            <div class="fw-bold">View Results</div>
+                            <small class="text-muted">Review scan history and reports</small>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-clock-history"></i> Recent Scans
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if recent_scans %}
+                    <div class="list-group list-group-flush">
+                        {% for scan in recent_scans[:5] %}
+                        <div class="list-group-item px-0">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">{{ scan.target }}</h6>
+                                <small>{{ scan.created_at }}</small>
+                            </div>
+                            <p class="mb-1">{{ scan.scan_type }}</p>
+                            <small class="text-muted">
+                                Status: 
+                                <span class="badge bg-{% if scan.status == 'completed' %}success{% elif scan.status == 'running' %}warning{% else %}secondary{% endif %}">
+                                    {{ scan.status }}
+                                </span>
+                            </small>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="bi bi-inbox" style="font-size: 3rem;"></i>
+                        <p class="mt-2 mb-0">No recent scans</p>
+                        <small>Start your first scan to see results here</small>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- System Information -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-info-circle"></i> System Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Framework Status</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="bi bi-check-circle text-success"></i> ReconForge v1.1.0 Active</li>
+                            <li><i class="bi bi-check-circle text-success"></i> Database Connected</li>
+                            <li><i class="bi bi-wifi text-success" id="wsStatusIcon"></i> WebSocket <span id="wsStatusText">Connecting...</span></li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Available Features</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="bi bi-check-circle text-success"></i> Subdomain Discovery</li>
+                            <li><i class="bi bi-check-circle text-success"></i> Vulnerability Scanning</li>
+                            <li><i class="bi bi-check-circle text-success"></i> Penetration Testing</li>
+                            <li><i class="bi bi-check-circle text-success"></i> Report Generation</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Update WebSocket status display
+    function updateWebSocketStatusDisplay(connected) {
+        const icon = document.getElementById('wsStatusIcon');
+        const text = document.getElementById('wsStatusText');
+        
+        if (connected) {
+            icon.className = 'bi bi-wifi text-success';
+            text.textContent = 'Connected';
+        } else {
+            icon.className = 'bi bi-wifi-off text-danger';
+            text.textContent = 'Disconnected';
+        }
+    }
+
+    // Override the global WebSocket status update
+    const originalUpdateConnectionStatus = window.updateConnectionStatus;
+    window.updateConnectionStatus = function(connected) {
+        originalUpdateConnectionStatus(connected);
+        updateWebSocketStatusDisplay(connected);
+    };
+
+    // Initial status
+    updateWebSocketStatusDisplay(false);
+</script>
+{% endblock %}

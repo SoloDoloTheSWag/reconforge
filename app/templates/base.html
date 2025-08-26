@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ page_title }} - ReconForge{% endblock %}</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <!-- Custom CSS -->
+    <link href="/static/css/custom.css" rel="stylesheet">
+    
+    <style>
+        /* Inline critical CSS to ensure proper rendering */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            padding-top: 0;
+        }
+        .navbar-brand {
+            font-weight: bold;
+        }
+        .hero-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+        }
+        .card {
+            border: none;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        }
+        .connection-status {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background-color: #f8d7da;
+            color: #721c24;
+            text-align: center;
+            padding: 10px;
+            z-index: 9999;
+            display: none;
+        }
+        .connection-status.show {
+            display: block;
+        }
+        .connection-status.connected {
+            background-color: #d1edff;
+            color: #0c5460;
+        }
+    </style>
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Connection Status -->
+    <div id="connectionStatus" class="connection-status">
+        <i class="bi bi-wifi-off"></i>
+        Connection Lost: Real-time updates are unavailable. Attempting to reconnect...
+    </div>
+
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-shield-check-fill"></i>
+                ReconForge
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">
+                            <i class="bi bi-speedometer2"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/discover">
+                            <i class="bi bi-search"></i> Discover
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/scan">
+                            <i class="bi bi-bug"></i> Scan
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/pentest">
+                            <i class="bi bi-unlock"></i> Pentest
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/scans">
+                            <i class="bi bi-list-ul"></i> Scans
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/tools">
+                            <i class="bi bi-wrench"></i> Tools
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/terminal">
+                            <i class="bi bi-terminal"></i> Terminal
+                        </a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <span class="navbar-text">
+                            <span id="wsStatus" class="badge bg-danger">
+                                <i class="bi bi-wifi-off"></i> Offline
+                            </span>
+                        </span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container-fluid py-4">
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-light text-center text-muted py-3 mt-5">
+        <div class="container">
+            <small>
+                ReconForge v1.1.0 - Professional Reconnaissance & Penetration Testing Framework
+                <br>
+                Built for security professionals and ethical hackers
+            </small>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+    
+    <!-- Custom JavaScript -->
+    <script>
+        // Simple WebSocket connection
+        let ws = null;
+        let reconnectInterval = 5000;
+        let maxReconnectAttempts = 5;
+        let reconnectAttempts = 0;
+
+        function initWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = protocol + '//' + window.location.host + '/ws';
+            
+            try {
+                ws = new WebSocket(wsUrl);
+                
+                ws.onopen = function(event) {
+                    console.log('WebSocket connected');
+                    reconnectAttempts = 0;
+                    updateConnectionStatus(true);
+                };
+                
+                ws.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        handleWebSocketMessage(data);
+                    } catch (e) {
+                        console.error('Error parsing WebSocket message:', e);
+                    }
+                };
+                
+                ws.onclose = function(event) {
+                    console.log('WebSocket disconnected');
+                    updateConnectionStatus(false);
+                    
+                    if (reconnectAttempts < maxReconnectAttempts) {
+                        setTimeout(initWebSocket, reconnectInterval);
+                        reconnectAttempts++;
+                    }
+                };
+                
+                ws.onerror = function(error) {
+                    console.error('WebSocket error:', error);
+                    updateConnectionStatus(false);
+                };
+                
+            } catch (error) {
+                console.error('WebSocket connection error:', error);
+                updateConnectionStatus(false);
+            }
+        }
+
+        function updateConnectionStatus(connected) {
+            const statusElement = document.getElementById('connectionStatus');
+            const wsStatus = document.getElementById('wsStatus');
+            
+            if (connected) {
+                if (statusElement) statusElement.classList.remove('show');
+                if (wsStatus) {
+                    wsStatus.className = 'badge bg-success';
+                    wsStatus.innerHTML = '<i class="bi bi-wifi"></i> Online';
+                }
+            } else {
+                if (statusElement) statusElement.classList.add('show');
+                if (wsStatus) {
+                    wsStatus.className = 'badge bg-danger';
+                    wsStatus.innerHTML = '<i class="bi bi-wifi-off"></i> Offline';
+                }
+            }
+        }
+
+        function handleWebSocketMessage(data) {
+            // Handle different message types
+            if (data.type === 'scan_update') {
+                updateScanProgress(data);
+            } else if (data.type === 'scan_complete') {
+                handleScanComplete(data);
+            } else if (data.type === 'scan_error') {
+                handleScanError(data);
+            }
+        }
+
+        function updateScanProgress(data) {
+            // Update scan progress if on relevant page
+            if (typeof window.updateScanProgress === 'function') {
+                window.updateScanProgress(data);
+            }
+        }
+
+        function handleScanComplete(data) {
+            if (typeof window.handleScanComplete === 'function') {
+                window.handleScanComplete(data);
+            }
+        }
+
+        function handleScanError(data) {
+            if (typeof window.handleScanError === 'function') {
+                window.handleScanError(data);
+            }
+        }
+
+        // Initialize WebSocket on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initWebSocket();
+        });
+    </script>
+    
+    <script src="/static/js/common.js"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

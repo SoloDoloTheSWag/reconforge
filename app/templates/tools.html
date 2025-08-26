@@ -1,0 +1,705 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="bg-gradient-success text-white rounded p-4 shadow">
+            <div class="row align-items-center">
+                <div class="col-lg-8">
+                    <h1 class="display-5 fw-bold mb-2">
+                        <i class="bi bi-tools"></i> Tool Management
+                    </h1>
+                    <p class="lead mb-0">Manage and configure reconnaissance and penetration testing tools</p>
+                    <p class="mb-0">Check installation status, install missing tools, and configure tool settings</p>
+                </div>
+                <div class="col-lg-4 text-end">
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-outline-light" onclick="checkAllTools()">
+                            <i class="bi bi-arrow-clockwise"></i> Refresh
+                        </button>
+                        <button type="button" class="btn btn-light" onclick="installMissingTools()">
+                            <i class="bi bi-download"></i> Install Missing
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tool Statistics -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Available Tools
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="availableCount">
+                            {{ available_tools }}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-check-circle fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            Missing Tools
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="missingCount">
+                            {{ missing_tools }}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-exclamation-triangle fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            Total Tools
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="totalCount">
+                            {{ total_tools }}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-tools fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            Installation Progress
+                        </div>
+                        <div class="row no-gutters align-items-center">
+                            <div class="col-auto">
+                                <div class="h5 mb-0 mr-3 font-weight-bold text-gray-800" id="progressPercent">
+                                    {{ ((available_tools / total_tools * 100) | round(0)) if total_tools > 0 else 0 }}%
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="progress progress-sm mr-2">
+                                    <div class="progress-bar bg-info" role="progressbar" id="progressBar"
+                                         style="width: {{ ((available_tools / total_tools * 100) | round(0)) if total_tools > 0 else 0 }}%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-pie-chart fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tool Categories -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-4">
+                        <label for="categoryFilter" class="form-label">Filter by Category:</label>
+                        <select class="form-control" id="categoryFilter" onchange="filterTools()">
+                            <option value="all">All Tools</option>
+                            <option value="discovery">Discovery Tools</option>
+                            <option value="scanning">Scanning Tools</option>
+                            <option value="exploitation">Exploitation Tools</option>
+                            <option value="wordlists">Wordlists</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="statusFilter" class="form-label">Filter by Status:</label>
+                        <select class="form-control" id="statusFilter" onchange="filterTools()">
+                            <option value="all">All Statuses</option>
+                            <option value="available">Available</option>
+                            <option value="missing">Missing</option>
+                            <option value="outdated">Outdated</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="searchTool" class="form-label">Search Tools:</label>
+                        <input type="text" class="form-control" id="searchTool" 
+                               placeholder="Tool name..." onkeyup="filterTools()">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tools List -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-list-check"></i> Tool Status
+                </h6>
+                <div>
+                    <button type="button" class="btn btn-sm btn-outline-success" onclick="installSelectedTools()">
+                        <i class="bi bi-download"></i> Install Selected
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="updateSelectedTools()">
+                        <i class="bi bi-arrow-up-circle"></i> Update Selected
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="toolsTable">
+                        <thead>
+                            <tr>
+                                <th>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" 
+                                               id="selectAll" onchange="toggleSelectAll()">
+                                    </div>
+                                </th>
+                                <th>Tool Name</th>
+                                <th>Category</th>
+                                <th>Description</th>
+                                <th>Version</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="toolsTableBody">
+                            {% for tool_name, tool_info in tools.items() %}
+                            <tr data-category="{{ tool_info.category or 'other' }}" 
+                                data-status="{{ 'available' if tool_info.available else 'missing' }}"
+                                data-name="{{ tool_name.lower() }}">
+                                <td>
+                                    <div class="form-check">
+                                        <input class="form-check-input tool-checkbox" type="checkbox" 
+                                               value="{{ tool_name }}" 
+                                               {% if not tool_info.available %}data-missing="true"{% endif %}>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div>
+                                            <strong>{{ tool_name }}</strong>
+                                            {% if tool_info.command %}
+                                                <br><small class="text-muted">
+                                                    <code>{{ tool_info.command }}</code>
+                                                </small>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary">
+                                        {{ (tool_info.category or 'Other').title() }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <small>{{ tool_info.description or 'No description available' }}</small>
+                                </td>
+                                <td>
+                                    {% if tool_info.available and tool_info.version %}
+                                        <small><code>{{ tool_info.version }}</code></small>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if tool_info.available %}
+                                        <span class="badge bg-success">
+                                            <i class="bi bi-check-circle"></i> Available
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-warning">
+                                            <i class="bi bi-exclamation-triangle"></i> Missing
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        {% if tool_info.available %}
+                                            <button type="button" class="btn btn-outline-info" 
+                                                    onclick="showToolInfo('{{ tool_name }}')">
+                                                <i class="bi bi-info-circle"></i> Info
+                                            </button>
+                                            <button type="button" class="btn btn-outline-primary" 
+                                                    onclick="updateTool('{{ tool_name }}')">
+                                                <i class="bi bi-arrow-up-circle"></i> Update
+                                            </button>
+                                        {% else %}
+                                            <button type="button" class="btn btn-outline-success" 
+                                                    onclick="installTool('{{ tool_name }}')">
+                                                <i class="bi bi-download"></i> Install
+                                            </button>
+                                        {% endif %}
+                                        <button type="button" class="btn btn-outline-secondary dropdown-toggle" 
+                                                data-bs-toggle="dropdown">
+                                            <i class="bi bi-three-dots"></i>
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <li><a class="dropdown-item" href="#" onclick="testTool('{{ tool_name }}')">
+                                                <i class="bi bi-play-circle"></i> Test
+                                            </a></li>
+                                            {% if tool_info.documentation %}
+                                                <li><a class="dropdown-item" href="{{ tool_info.documentation }}" target="_blank">
+                                                    <i class="bi bi-book"></i> Documentation
+                                                </a></li>
+                                            {% endif %}
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li><a class="dropdown-item" href="#" onclick="showToolConfig('{{ tool_name }}')">
+                                                <i class="bi bi-gear"></i> Configure
+                                            </a></li>
+                                        </ul>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Installation Progress Modal -->
+<div class="modal fade" id="installationModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-download"></i> Tool Installation
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span id="installStatus">Preparing installation...</span>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="cancelInstallation()">
+                            <i class="bi bi-stop-circle"></i> Cancel
+                        </button>
+                    </div>
+                </div>
+                <div class="progress mb-3">
+                    <div id="installProgress" class="progress-bar progress-bar-striped progress-bar-animated" 
+                         role="progressbar" style="width: 0%"></div>
+                </div>
+                <div id="installLogs" class="border rounded p-3 bg-light" 
+                     style="height: 300px; overflow-y: auto; font-family: monospace; font-size: 0.9em;">
+                    <!-- Installation logs will appear here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let installationInProgress = false;
+
+// Filter tools based on criteria
+function filterTools() {
+    const categoryFilter = document.getElementById('categoryFilter').value;
+    const statusFilter = document.getElementById('statusFilter').value;
+    const searchTool = document.getElementById('searchTool').value.toLowerCase();
+    
+    const rows = document.querySelectorAll('#toolsTableBody tr');
+    
+    rows.forEach(row => {
+        const category = row.dataset.category;
+        const status = row.dataset.status;
+        const name = row.dataset.name;
+        
+        let show = true;
+        
+        // Category filter
+        if (categoryFilter !== 'all' && category !== categoryFilter) {
+            show = false;
+        }
+        
+        // Status filter
+        if (statusFilter !== 'all' && status !== statusFilter) {
+            show = false;
+        }
+        
+        // Name search
+        if (searchTool && !name.includes(searchTool)) {
+            show = false;
+        }
+        
+        row.style.display = show ? '' : 'none';
+    });
+}
+
+// Toggle select all checkboxes
+function toggleSelectAll() {
+    const selectAll = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.tool-checkbox');
+    
+    checkboxes.forEach(checkbox => {
+        const row = checkbox.closest('tr');
+        if (row.style.display !== 'none') {
+            checkbox.checked = selectAll.checked;
+        }
+    });
+}
+
+// Get selected tools
+function getSelectedTools() {
+    const selected = [];
+    document.querySelectorAll('.tool-checkbox:checked').forEach(checkbox => {
+        selected.push(checkbox.value);
+    });
+    return selected;
+}
+
+// Check all tools status
+function checkAllTools() {
+    showAlert('info', 'Checking tool status...');
+    
+    fetch('/api/tools/check', { method: 'POST' })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('success', 'Tool status updated');
+            location.reload();
+        } else {
+            showAlert('error', data.error || 'Failed to check tools');
+        }
+    })
+    .catch(error => {
+        showAlert('error', 'Failed to check tools: ' + error.message);
+    });
+}
+
+// Install missing tools
+function installMissingTools() {
+    const missingTools = [];
+    document.querySelectorAll('.tool-checkbox[data-missing="true"]').forEach(checkbox => {
+        missingTools.push(checkbox.value);
+    });
+    
+    if (missingTools.length === 0) {
+        showAlert('info', 'No missing tools to install');
+        return;
+    }
+    
+    if (!confirm(`Install ${missingTools.length} missing tools? This may take several minutes.`)) {
+        return;
+    }
+    
+    startInstallation(missingTools);
+}
+
+// Install selected tools
+function installSelectedTools() {
+    const selected = getSelectedTools();
+    if (selected.length === 0) {
+        showAlert('warning', 'Please select tools to install');
+        return;
+    }
+    
+    if (!confirm(`Install ${selected.length} selected tools?`)) {
+        return;
+    }
+    
+    startInstallation(selected);
+}
+
+// Update selected tools
+function updateSelectedTools() {
+    const selected = getSelectedTools();
+    if (selected.length === 0) {
+        showAlert('warning', 'Please select tools to update');
+        return;
+    }
+    
+    if (!confirm(`Update ${selected.length} selected tools?`)) {
+        return;
+    }
+    
+    startUpdate(selected);
+}
+
+// Start installation process
+function startInstallation(tools) {
+    if (installationInProgress) {
+        showAlert('warning', 'Installation already in progress');
+        return;
+    }
+    
+    installationInProgress = true;
+    const modal = new bootstrap.Modal(document.getElementById('installationModal'));
+    modal.show();
+    
+    updateInstallStatus('Starting installation...', 0);
+    logInstallMessage('Installing tools: ' + tools.join(', '));
+    
+    fetch('/api/tools/install', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tools: tools })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updateInstallStatus('Installation completed!', 100);
+            logInstallMessage('Installation completed successfully');
+            showAlert('success', 'Tools installed successfully');
+            setTimeout(() => location.reload(), 2000);
+        } else {
+            updateInstallStatus('Installation failed', 0);
+            logInstallMessage('Installation failed: ' + (data.error || 'Unknown error'));
+            showAlert('error', data.error || 'Installation failed');
+        }
+    })
+    .catch(error => {
+        updateInstallStatus('Installation failed', 0);
+        logInstallMessage('Installation failed: ' + error.message);
+        showAlert('error', 'Installation failed: ' + error.message);
+    })
+    .finally(() => {
+        installationInProgress = false;
+    });
+}
+
+// Start update process
+function startUpdate(tools) {
+    fetch('/api/tools/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tools: tools })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('success', 'Tools updated successfully');
+            location.reload();
+        } else {
+            showAlert('error', data.error || 'Update failed');
+        }
+    })
+    .catch(error => {
+        showAlert('error', 'Update failed: ' + error.message);
+    });
+}
+
+// Install single tool
+function installTool(toolName) {
+    if (!confirm(`Install ${toolName}?`)) {
+        return;
+    }
+    
+    startInstallation([toolName]);
+}
+
+// Update single tool
+function updateTool(toolName) {
+    if (!confirm(`Update ${toolName}?`)) {
+        return;
+    }
+    
+    startUpdate([toolName]);
+}
+
+// Test tool
+function testTool(toolName) {
+    showAlert('info', `Testing ${toolName}...`);
+    
+    fetch(`/api/tools/test/${toolName}`, { method: 'POST' })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('success', `${toolName} test passed: ${data.output || 'Tool is working correctly'}`);
+        } else {
+            showAlert('error', `${toolName} test failed: ${data.error || 'Test failed'}`);
+        }
+    })
+    .catch(error => {
+        showAlert('error', `Failed to test ${toolName}: ${error.message}`);
+    });
+}
+
+// Show tool info
+function showToolInfo(toolName) {
+    fetch(`/api/tools/info/${toolName}`)
+    .then(response => response.json())
+    .then(data => {
+        let infoHtml = `
+            <h5><i class="bi bi-tools"></i> ${toolName}</h5>
+            <p><strong>Status:</strong> ${data.available ? 
+                '<span class="badge bg-success">Available</span>' : 
+                '<span class="badge bg-warning">Missing</span>'}</p>
+        `;
+        
+        if (data.version) {
+            infoHtml += `<p><strong>Version:</strong> <code>${data.version}</code></p>`;
+        }
+        
+        if (data.command) {
+            infoHtml += `<p><strong>Command:</strong> <code>${data.command}</code></p>`;
+        }
+        
+        if (data.description) {
+            infoHtml += `<p><strong>Description:</strong> ${data.description}</p>`;
+        }
+        
+        if (data.path) {
+            infoHtml += `<p><strong>Path:</strong> <code>${data.path}</code></p>`;
+        }
+        
+        if (data.documentation) {
+            infoHtml += `<p><strong>Documentation:</strong> <a href="${data.documentation}" target="_blank">${data.documentation}</a></p>`;
+        }
+        
+        showAlert('info', infoHtml);
+    })
+    .catch(error => {
+        showAlert('error', `Failed to get tool info: ${error.message}`);
+    });
+}
+
+// Show tool configuration
+function showToolConfig(toolName) {
+    // This would show a configuration modal for the specific tool
+    showAlert('info', `Configuration for ${toolName} - Feature coming soon!`);
+}
+
+// Update installation status
+function updateInstallStatus(status, percentage) {
+    document.getElementById('installStatus').textContent = status;
+    document.getElementById('installProgress').style.width = percentage + '%';
+}
+
+// Log installation message
+function logInstallMessage(message) {
+    const logs = document.getElementById('installLogs');
+    const timestamp = new Date().toLocaleTimeString();
+    logs.innerHTML += `[${timestamp}] ${message}\n`;
+    logs.scrollTop = logs.scrollHeight;
+}
+
+// Cancel installation
+function cancelInstallation() {
+    if (installationInProgress) {
+        fetch('/api/tools/cancel', { method: 'POST' })
+        .then(() => {
+            installationInProgress = false;
+            showAlert('warning', 'Installation cancelled');
+        });
+    }
+}
+
+// WebSocket message handling for installation progress
+function handleWebSocketMessage(data) {
+    if (data.type === 'tool_install_progress') {
+        updateInstallStatus(data.status, data.percentage);
+        logInstallMessage(data.message);
+    } else if (data.type === 'tool_install_complete') {
+        updateInstallStatus('Installation completed!', 100);
+        logInstallMessage('Installation completed successfully');
+        installationInProgress = false;
+    } else if (data.type === 'tool_install_error') {
+        updateInstallStatus('Installation failed', 0);
+        logInstallMessage('Installation failed: ' + data.error);
+        installationInProgress = false;
+    }
+}
+
+// Initialize page
+window.addEventListener('load', function() {
+    // Any initialization code
+});
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.bg-gradient-success {
+    background: linear-gradient(45deg, #1cc88a, #17a673);
+}
+
+.border-left-success {
+    border-left: 0.25rem solid #1cc88a !important;
+}
+
+.border-left-warning {
+    border-left: 0.25rem solid #f6c23e !important;
+}
+
+.border-left-primary {
+    border-left: 0.25rem solid #4e73df !important;
+}
+
+.border-left-info {
+    border-left: 0.25rem solid #36b9cc !important;
+}
+
+.table th {
+    border-top: none;
+}
+
+.btn-group-sm > .btn, .btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+.fa-2x {
+    font-size: 2em;
+}
+
+.text-gray-800 {
+    color: #5a5c69;
+}
+
+.text-gray-300 {
+    color: #dddfeb;
+}
+
+.progress-sm {
+    height: 0.5rem;
+}
+
+#installLogs {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+code {
+    font-size: 0.9em;
+}
+</style>
+{% endblock %}

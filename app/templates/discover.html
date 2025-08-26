@@ -1,0 +1,542 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="bg-gradient-primary text-white rounded p-4 shadow">
+            <div class="row align-items-center">
+                <div class="col-lg-8">
+                    <h1 class="display-5 fw-bold mb-2">
+                        <i class="bi bi-search"></i> Subdomain Discovery
+                    </h1>
+                    <p class="lead mb-0">Automated subdomain enumeration using passive and active techniques</p>
+                    <p class="mb-0">Discover subdomains with multiple sources including subfinder, amass, crt.sh, and DNS brute force</p>
+                </div>
+                <div class="col-lg-4 text-end">
+                    <a href="{{ url_for('scans_page') }}" class="btn btn-outline-light btn-lg">
+                        <i class="bi bi-list-ul"></i> View Scans
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Discovery Form -->
+<div class="row">
+    <div class="col-xl-8 mb-4">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-play-circle"></i> Start Discovery
+                </h6>
+            </div>
+            <div class="card-body">
+                <form id="discoveryForm">
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="target" class="form-label">
+                                <i class="bi bi-bullseye"></i> Target Domain
+                            </label>
+                            <input type="text" 
+                                   class="form-control form-control-lg" 
+                                   id="target" 
+                                   name="target"
+                                   placeholder="example.com" 
+                                   required>
+                            <div class="form-text">Enter the main domain to discover subdomains for</div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="discoveryMode" class="form-label">
+                                <i class="bi bi-gear"></i> Discovery Mode
+                            </label>
+                            <select class="form-control" id="discoveryMode" name="mode">
+                                <option value="both">Both Passive & Active</option>
+                                <option value="passive">Passive Only</option>
+                                <option value="active">Active Only</option>
+                            </select>
+                            <div class="form-text">Choose between passive (safe) and active (more thorough) discovery</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="sources" class="form-label">
+                                <i class="bi bi-collection"></i> Sources
+                            </label>
+                            <select class="form-control" id="sources" name="sources" multiple>
+                                {% for source_name, source_info in sources.items() %}
+                                <option value="{{ source_name }}" {% if source_info.enabled %}selected{% endif %}>
+                                    {{ source_info.description or source_name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Select specific discovery sources (leave empty for all)</div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="wordlist" class="form-label">
+                                <i class="bi bi-file-text"></i> Custom Wordlist (Optional)
+                            </label>
+                            <input type="file" class="form-control" id="wordlist" name="wordlist" accept=".txt">
+                            <div class="form-text">Upload custom wordlist for brute force discovery</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="outputFormat" class="form-label">
+                                <i class="bi bi-download"></i> Output Format
+                            </label>
+                            <select class="form-control" id="outputFormat" name="format">
+                                <option value="json">JSON</option>
+                                <option value="csv">CSV</option>
+                                <option value="txt">Text</option>
+                            </select>
+                            <div class="form-text">Choose format for downloading results</div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                <button type="button" class="btn btn-secondary me-md-2" onclick="resetForm()">
+                                    <i class="bi bi-arrow-clockwise"></i> Reset
+                                </button>
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="bi bi-search"></i> Start Discovery
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Available Sources -->
+    <div class="col-xl-4 mb-4">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-tools"></i> Available Sources
+                </h6>
+            </div>
+            <div class="card-body">
+                {% for source_name, source_info in sources.items() %}
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                        <strong>{{ source_name.replace('_', ' ').title() }}</strong>
+                        <br>
+                        <small class="text-muted">{{ source_info.description or 'No description available' }}</small>
+                    </div>
+                    <div>
+                        {% if source_info.enabled %}
+                            <span class="badge bg-success">
+                                <i class="bi bi-check-circle"></i> Ready
+                            </span>
+                        {% else %}
+                            <span class="badge bg-warning">
+                                <i class="bi bi-exclamation-triangle"></i> Disabled
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% if not loop.last %}
+                    <hr class="my-2">
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Discovery Tips -->
+        <div class="card shadow mt-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-info">
+                    <i class="bi bi-lightbulb"></i> Discovery Tips
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <h6><i class="bi bi-shield-check"></i> Passive Discovery</h6>
+                    <small class="text-muted">
+                        Uses public data sources like certificate transparency logs, 
+                        search engines, and DNS records. Safe and undetectable.
+                    </small>
+                </div>
+                <div class="mb-3">
+                    <h6><i class="bi bi-activity"></i> Active Discovery</h6>
+                    <small class="text-muted">
+                        Performs DNS brute force attacks against the target domain. 
+                        More thorough but detectable.
+                    </small>
+                </div>
+                <div>
+                    <h6><i class="bi bi-clock"></i> Performance</h6>
+                    <small class="text-muted">
+                        Passive discovery is faster, while active discovery may take 
+                        several minutes depending on wordlist size.
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Progress Section (Hidden initially) -->
+<div id="progressSection" class="row mt-4" style="display: none;">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-success">
+                    <i class="bi bi-activity"></i> Discovery Progress
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span id="progressStatus">Starting discovery...</span>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="stopDiscovery()">
+                        <i class="bi bi-stop-circle"></i> Stop
+                    </button>
+                </div>
+                <div class="progress mb-3">
+                    <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                         role="progressbar" style="width: 0%"></div>
+                </div>
+                <div id="progressLogs" class="border rounded p-3 bg-light" style="height: 200px; overflow-y: auto; font-family: monospace; font-size: 0.9em;">
+                    <!-- Progress logs will appear here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Results Section (Hidden initially) -->
+<div id="resultsSection" class="row mt-4" style="display: none;">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-success">
+                    <i class="bi bi-check-circle"></i> Discovery Results
+                </h6>
+                <div>
+                    <button type="button" class="btn btn-sm btn-outline-primary me-2" onclick="downloadResults()">
+                        <i class="bi bi-download"></i> Download
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="startNewScan()">
+                        <i class="bi bi-plus-circle"></i> New Scan
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="resultsSummary" class="mb-3">
+                    <!-- Results summary will appear here -->
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover" id="resultsTable">
+                        <thead>
+                            <tr>
+                                <th>Subdomain</th>
+                                <th>IP Address</th>
+                                <th>Source</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultsTableBody">
+                            <!-- Results will appear here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentScanUuid = null;
+let discoveryResults = [];
+
+// Form submission
+document.getElementById('discoveryForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    startDiscovery();
+});
+
+// Start discovery
+function startDiscovery() {
+    const formData = new FormData(document.getElementById('discoveryForm'));
+    const target = formData.get('target');
+    
+    if (!target) {
+        showAlert('error', 'Please enter a target domain');
+        return;
+    }
+    
+    // Show progress section
+    document.getElementById('progressSection').style.display = 'block';
+    document.getElementById('resultsSection').style.display = 'none';
+    
+    // Scroll to progress section
+    document.getElementById('progressSection').scrollIntoView({ behavior: 'smooth' });
+    
+    // Prepare request data
+    const requestData = {
+        target: target,
+        mode: formData.get('mode'),
+        sources: Array.from(document.getElementById('sources').selectedOptions).map(option => option.value),
+        format: formData.get('format')
+    };
+    
+    // Start discovery
+    fetch('/api/discover', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            showAlert('error', data.error);
+            document.getElementById('progressSection').style.display = 'none';
+        } else {
+            currentScanUuid = data.scan_uuid;
+            updateProgress('Discovery started for ' + target, 10);
+            logProgress('Starting subdomain discovery for ' + target + '...');
+        }
+    })
+    .catch(error => {
+        showAlert('error', 'Failed to start discovery: ' + error.message);
+        document.getElementById('progressSection').style.display = 'none';
+    });
+}
+
+// Stop discovery
+function stopDiscovery() {
+    if (currentScanUuid) {
+        fetch('/api/stop-scan/' + currentScanUuid, { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            showAlert('info', 'Discovery stopped');
+            document.getElementById('progressSection').style.display = 'none';
+            currentScanUuid = null;
+        })
+        .catch(error => {
+            showAlert('error', 'Failed to stop discovery');
+        });
+    }
+}
+
+// Update progress
+function updateProgress(status, percentage) {
+    document.getElementById('progressStatus').textContent = status;
+    document.getElementById('progressBar').style.width = percentage + '%';
+}
+
+// Log progress message
+function logProgress(message) {
+    const logs = document.getElementById('progressLogs');
+    const timestamp = new Date().toLocaleTimeString();
+    logs.innerHTML += `[${timestamp}] ${message}\n`;
+    logs.scrollTop = logs.scrollHeight;
+}
+
+// Display results
+function displayResults(results) {
+    discoveryResults = results;
+    
+    // Hide progress, show results
+    document.getElementById('progressSection').style.display = 'none';
+    document.getElementById('resultsSection').style.display = 'block';
+    
+    // Update summary
+    const summary = document.getElementById('resultsSummary');
+    const uniqueSubdomains = new Set(results.map(r => r.subdomain)).size;
+    const sources = new Set(results.map(r => r.source)).size;
+    
+    summary.innerHTML = `
+        <div class="row text-center">
+            <div class="col-md-4">
+                <div class="border rounded p-3">
+                    <h4 class="text-primary">${uniqueSubdomains}</h4>
+                    <small class="text-muted">Unique Subdomains</small>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="border rounded p-3">
+                    <h4 class="text-success">${results.length}</h4>
+                    <small class="text-muted">Total Results</small>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="border rounded p-3">
+                    <h4 class="text-info">${sources}</h4>
+                    <small class="text-muted">Sources Used</small>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Update results table
+    const tbody = document.getElementById('resultsTableBody');
+    tbody.innerHTML = '';
+    
+    results.forEach(result => {
+        const row = tbody.insertRow();
+        
+        // Subdomain
+        row.insertCell(0).innerHTML = `<strong>${result.subdomain}</strong>`;
+        
+        // IP Address
+        row.insertCell(1).innerHTML = result.ip_address || '<span class="text-muted">-</span>';
+        
+        // Source
+        row.insertCell(2).innerHTML = `<span class="badge bg-secondary">${result.source}</span>`;
+        
+        // Status
+        const statusCell = row.insertCell(3);
+        if (result.ip_address) {
+            statusCell.innerHTML = '<span class="badge bg-success"><i class="bi bi-check-circle"></i> Resolved</span>';
+        } else {
+            statusCell.innerHTML = '<span class="badge bg-warning"><i class="bi bi-question-circle"></i> Unresolved</span>';
+        }
+        
+        // Actions
+        const actionsCell = row.insertCell(4);
+        actionsCell.innerHTML = `
+            <div class="btn-group btn-group-sm" role="group">
+                <button type="button" class="btn btn-outline-primary" onclick="scanSubdomain('${result.subdomain}')">
+                    <i class="bi bi-bug"></i> Scan
+                </button>
+                <button type="button" class="btn btn-outline-info" onclick="copySubdomain('${result.subdomain}')">
+                    <i class="bi bi-clipboard"></i> Copy
+                </button>
+            </div>
+        `;
+    });
+    
+    // Scroll to results
+    document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth' });
+    
+    showAlert('success', `Discovery completed! Found ${uniqueSubdomains} unique subdomains`);
+}
+
+// Download results
+function downloadResults() {
+    if (discoveryResults.length === 0) {
+        showAlert('warning', 'No results to download');
+        return;
+    }
+    
+    const format = document.getElementById('outputFormat').value;
+    const target = document.getElementById('target').value;
+    const filename = `subdomains_${target}_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.${format}`;
+    
+    let content = '';
+    let mimeType = '';
+    
+    if (format === 'json') {
+        content = JSON.stringify(discoveryResults, null, 2);
+        mimeType = 'application/json';
+    } else if (format === 'csv') {
+        content = 'Subdomain,IP Address,Source\n';
+        content += discoveryResults.map(r => `${r.subdomain},${r.ip_address || ''},${r.source}`).join('\n');
+        mimeType = 'text/csv';
+    } else {
+        content = discoveryResults.map(r => r.subdomain).join('\n');
+        mimeType = 'text/plain';
+    }
+    
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+// Copy subdomain to clipboard
+function copySubdomain(subdomain) {
+    navigator.clipboard.writeText(subdomain).then(() => {
+        showAlert('success', `Copied ${subdomain} to clipboard`);
+    }).catch(() => {
+        showAlert('error', 'Failed to copy to clipboard');
+    });
+}
+
+// Scan specific subdomain
+function scanSubdomain(subdomain) {
+    const url = new URL('{{ url_for("scan_page") }}', window.location.origin);
+    url.searchParams.set('target', subdomain);
+    window.open(url.toString(), '_blank');
+}
+
+// Reset form
+function resetForm() {
+    document.getElementById('discoveryForm').reset();
+    document.getElementById('progressSection').style.display = 'none';
+    document.getElementById('resultsSection').style.display = 'none';
+    currentScanUuid = null;
+    discoveryResults = [];
+}
+
+// Start new scan
+function startNewScan() {
+    resetForm();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// WebSocket message handling
+function handleWebSocketMessage(data) {
+    if (data.type === 'discovery_progress' && data.scan_uuid === currentScanUuid) {
+        updateProgress(data.status, data.percentage);
+        logProgress(data.message);
+    } else if (data.type === 'discovery_complete' && data.scan_uuid === currentScanUuid) {
+        displayResults(data.results);
+    } else if (data.type === 'discovery_error' && data.scan_uuid === currentScanUuid) {
+        showAlert('error', 'Discovery failed: ' + data.error);
+        document.getElementById('progressSection').style.display = 'none';
+        currentScanUuid = null;
+    }
+}
+
+// Initialize page
+window.addEventListener('load', function() {
+    // Check if target is provided via URL parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetParam = urlParams.get('target');
+    if (targetParam) {
+        document.getElementById('target').value = targetParam;
+    }
+});
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.bg-gradient-primary {
+    background: linear-gradient(45deg, #4e73df, #224abe);
+}
+
+#progressLogs {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.table th {
+    border-top: none;
+}
+
+.btn-group-sm > .btn, .btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+</style>
+{% endblock %}
