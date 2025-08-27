@@ -6,6 +6,7 @@ import ipaddress
 import socket
 import json
 import yaml
+import os
 from pathlib import Path
 from typing import List, Dict, Optional, Union, Any, Set
 from datetime import datetime, timedelta
@@ -35,7 +36,7 @@ class ToolValidator:
         'waybackurls': {'cmd': 'waybackurls -h', 'description': 'Wayback URL finder'},
         'gau': {'cmd': 'gau --help', 'description': 'GetAllUrls tool'},
         'nikto': {'cmd': 'nikto -Version', 'description': 'Web vulnerability scanner'},
-        'gobuster': {'cmd': 'gobuster version', 'description': 'Directory/file brute-forcer'},
+        'gobuster': {'cmd': 'gobuster --help', 'description': 'Directory/file brute-forcer'},
         'masscan': {'cmd': 'masscan --help', 'description': 'Fast port scanner'},
     }
     
@@ -47,11 +48,19 @@ class ToolValidator:
         
         tool_info = ToolValidator.REQUIRED_TOOLS[tool_name]
         try:
+            # Create environment with Go tools in PATH
+            env = os.environ.copy()
+            gopath = subprocess.run(['go', 'env', 'GOPATH'], capture_output=True, text=True)
+            if gopath.returncode == 0:
+                go_bin_path = f"{gopath.stdout.strip()}/bin"
+                env['PATH'] = f"{env.get('PATH', '')}:{go_bin_path}"
+            
             result = subprocess.run(
                 tool_info['cmd'].split(),
                 capture_output=True,
                 text=True,
-                timeout=10
+                timeout=10,
+                env=env
             )
             return {
                 'available': result.returncode in [0, 1],  # Some tools return 1 for help

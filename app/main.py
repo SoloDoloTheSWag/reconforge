@@ -22,6 +22,7 @@ import uvicorn
 from pydantic import BaseModel
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
+from starlette.staticfiles import StaticFiles as StarletteStaticFiles
 
 # Add parent directory to path
 import sys
@@ -37,6 +38,17 @@ from scanners.base import ScannerManager
 from scanners.nuclei import get_nuclei_scanners
 from scanners.web import get_web_scanners
 from pentest.base import PentestManager, get_pentest_modules
+
+
+class CacheControlStaticFiles(StaticFiles):
+    """StaticFiles with cache control headers"""
+    
+    def file_response(self, *args, **kwargs):
+        response = super().file_response(*args, **kwargs)
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -61,7 +73,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 app = FastAPI(
     title="ReconForge",
     description="Professional Reconnaissance and Penetration Testing Framework",
-    version="1.1.0"
+    version="1.2.0"
 )
 
 # Add security middleware
@@ -98,7 +110,7 @@ def url_for(name: str, **path_params):
     return routes.get(name, '/')
 
 templates.env.globals["url_for"] = url_for
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+app.mount("/static", CacheControlStaticFiles(directory="app/static"), name="static")
 
 # Initialize database and managers
 db = ReconForgeDB()
@@ -141,6 +153,7 @@ manager = ConnectionManager()
 
 # Background tasks tracking
 active_scans = {}
+background_tasks_registry = {}
 
 # Pydantic models
 class ScanRequest(BaseModel):
@@ -207,7 +220,7 @@ async def dashboard(request: Request):
         'total_tools': len(tool_status)
     }
     
-    return templates.TemplateResponse("dashboard.html", {
+    return templates.TemplateResponse("modern_dashboard.html", {
         "request": request,
         "recent_scans": recent_scans,
         "stats": stats,
@@ -485,6 +498,42 @@ async def download_scan_results(scan_id: str):
         raise HTTPException(status_code=500, detail="Failed to download results")
 
 
+@app.get("/api/scans/{scan_id}/details")
+async def get_scan_details(scan_id: int):
+    """Get detailed scan information for dashboard display"""
+    try:
+        # Get scan information
+        scan = db.get_scan(scan_id)
+        if not scan:
+            raise HTTPException(status_code=404, detail="Scan not found")
+        
+        # Get related data
+        subdomains = db.get_subdomains(scan_id)
+        vulnerabilities = db.get_vulnerabilities(scan_id)
+        services = db.get_services(scan_id)
+        
+        # Format datetime fields for JSON serialization
+        if scan.get('start_time'):
+            scan['start_time'] = scan['start_time'].strftime('%Y-%m-%d %H:%M:%S') if hasattr(scan['start_time'], 'strftime') else str(scan['start_time'])
+        if scan.get('end_time'):
+            scan['end_time'] = scan['end_time'].strftime('%Y-%m-%d %H:%M:%S') if hasattr(scan['end_time'], 'strftime') else str(scan['end_time'])
+        if scan.get('created_at'):
+            scan['created_at'] = scan['created_at'].strftime('%Y-%m-%d %H:%M:%S') if hasattr(scan['created_at'], 'strftime') else str(scan['created_at'])
+        
+        return {
+            "scan": scan,
+            "subdomains": subdomains[:50],  # Limit to first 50 for performance
+            "vulnerabilities": vulnerabilities[:50],  # Limit to first 50
+            "services": services[:50]  # Limit to first 50
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        web_logger.error(f"Failed to get scan details: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get scan details")
+
+
 @app.get("/discover", response_class=HTMLResponse)
 async def discover_page(request: Request):
     """Subdomain discovery page"""
@@ -637,7 +686,8 @@ async def start_subdomain_discovery(request: ScanRequest, background_tasks: Back
             'target': target_clean,
             'type': scan_type,
             'status': 'running',
-            'start_time': datetime.now()
+            'start_time': datetime.now(),
+            'cancelled': False
         }
         
         # Start background task
@@ -676,7 +726,8 @@ async def start_vulnerability_scan(request: VulnScanRequest, background_tasks: B
         'targets': request.targets,
         'type': 'vulnerability_scan',
         'status': 'running',
-        'start_time': datetime.now()
+        'start_time': datetime.now(),
+        'cancelled': False
     }
     
     # Start background task
@@ -705,7 +756,8 @@ async def start_penetration_test(request: PentestRequest, background_tasks: Back
         'target': request.target,
         'type': 'penetration_test',
         'status': 'running',
-        'start_time': datetime.now()
+        'start_time': datetime.now(),
+        'cancelled': False
     }
     
     # Start background task
@@ -956,6 +1008,9 @@ async def websocket_endpoint(websocket: WebSocket):
 # Background task functions
 async def run_subdomain_discovery(scan_uuid: str, target: str, config: Dict[str, Any]):
     """Background task for subdomain discovery"""
+    if scan_uuid not in active_scans:
+        return
+        
     scan_info = active_scans[scan_uuid]
     scan_id = scan_info['scan_id']
     
@@ -968,18 +1023,26 @@ async def run_subdomain_discovery(scan_uuid: str, target: str, config: Dict[str,
             "message": f"Starting subdomain discovery for {target}"
         })
         
+        # Check if cancelled before starting
+        if scan_info.get('cancelled', False):
+            return
+        
         # Configure sources based on config
         source_names = config.get('sources')
         if config.get('passive_only'):
             source_names = [name for name, source in source_manager.sources.items() 
                            if hasattr(source, 'rate_limit')]
         
-        # Run discovery
+        # Run discovery with cancellation checks
         results = await source_manager.discover_all(
             target,
             sources=source_names,
             parallel=True
         )
+        
+        # Check if cancelled after discovery
+        if scan_info.get('cancelled', False):
+            return
         
         # Store results
         for result in results:
@@ -1222,10 +1285,36 @@ async def run_penetration_test(scan_uuid: str, target: str,
 async def stop_scan_api(scan_uuid: str):
     """Stop a running scan"""
     if scan_uuid in active_scans:
-        del active_scans[scan_uuid]
+        scan_info = active_scans[scan_uuid]
+        scan_status = scan_info.get('status', 'running')
+        
+        # If scan is already completed or failed, just remove it from active scans
+        if scan_status in ['completed', 'failed']:
+            del active_scans[scan_uuid]
+            return {"success": True, "message": f"Scan {scan_status} - removed from active scans"}
+        
+        # If scan is still running, mark it as cancelled
+        scan_info['cancelled'] = True
+        scan_info['status'] = 'stopped'
+        
+        # Update database status
+        try:
+            db.update_scan_status(scan_info['scan_id'], 'stopped')
+        except Exception as e:
+            web_logger.error(f"Failed to update scan status in database: {e}")
+        
+        # Send cancellation notification
+        await manager.broadcast({
+            "type": "scan_cancelled",
+            "scan_uuid": scan_uuid,
+            "status": "stopped",
+            "message": "Scan cancelled by user"
+        })
+        
         return {"success": True, "message": "Scan stopped"}
     else:
-        raise HTTPException(status_code=404, detail="Scan not found")
+        # Scan not found in active scans - it might have already completed
+        return {"success": True, "message": "Scan not found in active scans (may have already completed)"}
 
 
 @app.post("/api/scans/delete")

@@ -11,33 +11,38 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <!-- Custom CSS -->
     <link href="/static/css/custom.css" rel="stylesheet">
+    <link href="/static/css/modern.css" rel="stylesheet">
     
     <style>
-        /* Inline critical CSS to ensure proper rendering */
+        /* Inline critical CSS to ensure proper rendering - Dark Theme */
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f8f9fa;
+            background-color: #1a1d23;
+            color: #e9ecef;
             padding-top: 0;
         }
         .navbar-brand {
             font-weight: bold;
+            color: #ffffff;
         }
         .hero-section {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
             color: white;
             padding: 2rem 0;
         }
         .card {
-            border: none;
-            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            background-color: #2d3436;
+            border: 1px solid #404040;
+            color: #e9ecef;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.3);
         }
         .connection-status {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
-            background-color: #f8d7da;
-            color: #721c24;
+            background-color: #721c24;
+            color: #f8d7da;
             text-align: center;
             padding: 10px;
             z-index: 9999;
@@ -47,8 +52,8 @@
             display: block;
         }
         .connection-status.connected {
-            background-color: #d1edff;
-            color: #0c5460;
+            background-color: #0c5460;
+            color: #d1ecf1;
         }
     </style>
     
@@ -62,19 +67,53 @@
     </div>
 
     <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
+    <nav class="navbar navbar-dark modern-navbar sticky-top">
         <div class="container-fluid">
             <a class="navbar-brand" href="/">
                 <i class="bi bi-shield-check-fill"></i>
                 ReconForge
             </a>
             
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <!-- Always visible horizontal navigation -->
+            <div class="navbar-nav-horizontal d-flex flex-row align-items-center me-auto">
+                <a class="nav-link-horizontal" href="/">
+                    <i class="bi bi-speedometer2"></i> Dashboard
+                </a>
+                <a class="nav-link-horizontal" href="/discover">
+                    <i class="bi bi-search"></i> Discover
+                </a>
+                <a class="nav-link-horizontal" href="/scan">
+                    <i class="bi bi-bug"></i> Scan
+                </a>
+                <a class="nav-link-horizontal" href="/pentest">
+                    <i class="bi bi-unlock"></i> Pentest
+                </a>
+                <a class="nav-link-horizontal" href="/scans">
+                    <i class="bi bi-list-ul"></i> Scans
+                </a>
+                <a class="nav-link-horizontal" href="/tools">
+                    <i class="bi bi-wrench"></i> Tools
+                </a>
+                <a class="nav-link-horizontal" href="/terminal">
+                    <i class="bi bi-terminal"></i> Terminal
+                </a>
+            </div>
+            
+            <!-- Status indicator -->
+            <div class="navbar-status">
+                <span id="wsStatus" class="badge bg-danger">
+                    <i class="bi bi-wifi-off"></i> Offline
+                </span>
+            </div>
+            
+            <!-- Mobile menu toggle (hidden by default) -->
+            <button class="navbar-toggler d-lg-none" type="button" data-bs-toggle="collapse" data-bs-target="#mobileNav" aria-controls="mobileNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
+            <!-- Mobile navigation (only visible on small screens) -->
+            <div class="collapse navbar-collapse d-lg-none" id="mobileNav">
+                <ul class="navbar-nav">
                     <li class="nav-item">
                         <a class="nav-link" href="/">
                             <i class="bi bi-speedometer2"></i> Dashboard
@@ -111,15 +150,6 @@
                         </a>
                     </li>
                 </ul>
-                <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <span class="navbar-text">
-                            <span id="wsStatus" class="badge bg-danger">
-                                <i class="bi bi-wifi-off"></i> Offline
-                            </span>
-                        </span>
-                    </li>
-                </ul>
             </div>
         </div>
     </nav>
@@ -133,7 +163,7 @@
     <footer class="bg-light text-center text-muted py-3 mt-5">
         <div class="container">
             <small>
-                ReconForge v1.1.0 - Professional Reconnaissance & Penetration Testing Framework
+                ReconForge v1.2.0 - Professional Reconnaissance & Penetration Testing Framework
                 <br>
                 Built for security professionals and ethical hackers
             </small>
@@ -142,6 +172,37 @@
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+    
+    <!-- Navigation Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Auto-close mobile menu when clicking a nav link
+            const mobileNavLinks = document.querySelectorAll('#mobileNav .nav-link');
+            const mobileNav = document.getElementById('mobileNav');
+            
+            mobileNavLinks.forEach(function(link) {
+                link.addEventListener('click', function() {
+                    if (mobileNav && mobileNav.classList.contains('show')) {
+                        const bsCollapse = new bootstrap.Collapse(mobileNav, {
+                            toggle: false
+                        });
+                        bsCollapse.hide();
+                    }
+                });
+            });
+            
+            // Highlight active nav link
+            const currentPath = window.location.pathname;
+            const horizontalLinks = document.querySelectorAll('.nav-link-horizontal');
+            const mobileLinks = document.querySelectorAll('#mobileNav .nav-link');
+            
+            [...horizontalLinks, ...mobileLinks].forEach(function(link) {
+                if (link.getAttribute('href') === currentPath) {
+                    link.classList.add('active');
+                }
+            });
+        });
+    </script>
     
     <!-- Custom JavaScript -->
     <script>

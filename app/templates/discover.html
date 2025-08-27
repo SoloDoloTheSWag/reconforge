@@ -504,6 +504,10 @@ function handleWebSocketMessage(data) {
         showAlert('error', 'Discovery failed: ' + data.error);
         document.getElementById('progressSection').style.display = 'none';
         currentScanUuid = null;
+    } else if (data.type === 'scan_cancelled' && data.scan_uuid === currentScanUuid) {
+        showAlert('info', data.message || 'Scan was cancelled');
+        document.getElementById('progressSection').style.display = 'none';
+        currentScanUuid = null;
     }
 }
 

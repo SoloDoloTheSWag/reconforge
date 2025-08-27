@@ -219,7 +219,25 @@ class ReconForgeDB:
         """Get scan details by ID"""
         with self.get_connection() as conn:
             row = conn.execute('SELECT * FROM scans WHERE id = ?', (scan_id,)).fetchone()
-            return dict(row) if row else None
+            if row:
+                scan = dict(row)
+                # Parse JSON config field if present
+                if scan.get('config'):
+                    try:
+                        scan['config'] = json.loads(scan['config'])
+                    except (json.JSONDecodeError, TypeError):
+                        scan['config'] = {}
+                
+                # Parse datetime fields
+                for field in ['created_at', 'updated_at', 'start_time', 'end_time']:
+                    if scan.get(field) and isinstance(scan[field], str):
+                        try:
+                            from datetime import datetime
+                            scan[field] = datetime.fromisoformat(scan[field].replace('Z', '+00:00'))
+                        except (ValueError, TypeError):
+                            pass
+                return scan
+            return None
     
     def get_scans(self, target: str = None, status: str = None, limit: int = 50) -> List[Dict]:
         """Get list of scans with optional filtering"""
@@ -243,7 +261,26 @@ class ReconForgeDB:
         
         with self.get_connection() as conn:
             rows = conn.execute(query, params).fetchall()
-            return [dict(row) for row in rows]
+            scans = []
+            for row in rows:
+                scan = dict(row)
+                # Parse JSON config field if present
+                if scan.get('config'):
+                    try:
+                        scan['config'] = json.loads(scan['config'])
+                    except (json.JSONDecodeError, TypeError):
+                        scan['config'] = {}
+                
+                # Parse datetime fields
+                for field in ['created_at', 'updated_at', 'start_time', 'end_time']:
+                    if scan.get(field) and isinstance(scan[field], str):
+                        try:
+                            from datetime import datetime
+                            scan[field] = datetime.fromisoformat(scan[field].replace('Z', '+00:00'))
+                        except (ValueError, TypeError):
+                            pass
+                scans.append(scan)
+            return scans
     
     # Subdomain management methods
     def add_subdomain(self, scan_id: int, subdomain: str, **kwargs):

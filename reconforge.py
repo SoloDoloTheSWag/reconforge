@@ -43,7 +43,7 @@ from scanners.web import get_web_scanners
 from pentest.base import PentestManager, get_pentest_modules
 
 # Version
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 # Global managers
 source_manager = SourceManager()
