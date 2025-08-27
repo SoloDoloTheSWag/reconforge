@@ -2,6 +2,29 @@
 
 All notable changes to the ReconForge penetration testing framework will be documented in this file.
 
+## [1.2.1] - 2025-08-27
+
+### Security
+#### 🔒 Data Protection & Privacy Enhancement
+- **Enhanced .gitignore**: Comprehensive exclusions for all reconnaissance data types
+- **History Cleanup**: Removed any accidental reconnaissance data from git history using git filter-branch
+- **Pattern Protection**: Added exclusion patterns for scan results, subdomain files, and target data
+- **Database Security**: All SQLite files and scan results properly excluded from version control
+- **Future Prevention**: Comprehensive patterns prevent accidental commits of sensitive reconnaissance data
+
+#### 📋 Protected Data Categories
+- **Scan Results**: All scan_*, pentest_*, recon_* files and directories
+- **Database Files**: SQLite databases (.db, .db-wal, .db-shm) with actual scan data
+- **Export Directories**: exports/, results/, reports/, output/ directories
+- **Subdomain Lists**: All *_subdomains*.txt files and domain enumeration results  
+- **Target Information**: Specific exclusions for actual reconnaissance targets
+- **Accidental Files**: Protection against files like '-' created by command parsing errors
+
+### Fixed
+- **Git History**: Completely removed reconnaissance data from all git commits
+- **File Cleanup**: Removed accidentally created files containing actual domain data
+- **Documentation**: Updated all references to reflect current security posture
+
 ## [1.2.0] - 2025-08-27
 
 ### Added
