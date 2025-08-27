@@ -538,16 +538,34 @@ class ConfigManager:
             return False
 
 class ReportGenerator:
-    """Generate reports in various formats"""
+    """Generate comprehensive reports in various formats"""
     
     @staticmethod
     def generate_text_report(data: Dict[str, Any]) -> str:
-        """Generate plain text report"""
+        """Generate enhanced plain text report"""
         lines = []
         lines.append("="*80)
         lines.append(f"ReconForge Security Assessment Report")
         lines.append(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         lines.append("="*80)
+        lines.append("")
+        
+        # Executive Summary
+        lines.append("EXECUTIVE SUMMARY")
+        lines.append("-" * 40)
+        total_vulns = data.get('stats', {}).get('total_vulnerabilities', 0)
+        critical_vulns = data.get('stats', {}).get('critical_vulnerabilities', 0)
+        high_vulns = data.get('stats', {}).get('high_vulnerabilities', 0)
+        
+        if total_vulns == 0:
+            lines.append("✓ No vulnerabilities were identified during the assessment.")
+        elif critical_vulns > 0:
+            lines.append(f"⚠  CRITICAL: {critical_vulns} critical vulnerabilities require immediate attention.")
+        elif high_vulns > 0:
+            lines.append(f"⚠  HIGH RISK: {high_vulns} high-severity vulnerabilities identified.")
+        else:
+            lines.append(f"ℹ  {total_vulns} vulnerabilities identified with medium/low severity.")
+        
         lines.append("")
         
         # Scan summary
@@ -558,7 +576,9 @@ class ReportGenerator:
             lines.append(f"Target: {scan.get('target', 'N/A')}")
             lines.append(f"Scan Type: {scan.get('scan_type', 'N/A')}")
             lines.append(f"Status: {scan.get('status', 'N/A')}")
+            lines.append(f"Started: {scan.get('started_at', 'N/A')}")
             lines.append(f"Duration: {scan.get('duration', 'N/A')} seconds")
+            lines.append(f"Modules Used: {len(scan.get('modules_used', []))}")
             lines.append("")
         
         # Statistics
@@ -567,26 +587,680 @@ class ReportGenerator:
             lines.append("STATISTICS")
             lines.append("-" * 40)
             lines.append(f"Total Subdomains: {stats.get('total_subdomains', 0)}")
+            lines.append(f"Live Subdomains: {stats.get('live_subdomains', 0)}")
             lines.append(f"Total Vulnerabilities: {stats.get('total_vulnerabilities', 0)}")
             lines.append(f"Total Services: {stats.get('total_services', 0)}")
+            lines.append(f"Unique Technologies: {stats.get('unique_technologies', 0)}")
             lines.append("")
             
             # Vulnerability breakdown
             if 'vulnerabilities_by_severity' in stats:
                 lines.append("Vulnerabilities by Severity:")
                 for severity, count in stats['vulnerabilities_by_severity'].items():
-                    lines.append(f"  {severity.upper()}: {count}")
+                    emoji = {"critical": "🔴", "high": "🟠", "medium": "🟡", "low": "🟢", "info": "ℹ️"}.get(severity.lower(), "")
+                    lines.append(f"  {emoji} {severity.upper()}: {count}")
                 lines.append("")
+            
+            # Top vulnerability types
+            if 'top_vulnerability_types' in stats:
+                lines.append("Top Vulnerability Types:")
+                for vuln_type, count in stats['top_vulnerability_types'].items():
+                    lines.append(f"  • {vuln_type}: {count}")
+                lines.append("")
+        
+        # Risk Assessment
+        lines.append("RISK ASSESSMENT")
+        lines.append("-" * 40)
+        risk_score = ReportGenerator._calculate_risk_score(data)
+        risk_level = ReportGenerator._get_risk_level(risk_score)
+        lines.append(f"Overall Risk Score: {risk_score}/100")
+        lines.append(f"Risk Level: {risk_level}")
+        lines.append("")
+        
+        # Key Findings
+        if 'vulnerabilities' in data and data['vulnerabilities']:
+            critical_findings = [v for v in data['vulnerabilities'] if v.get('severity') == 'critical']
+            high_findings = [v for v in data['vulnerabilities'] if v.get('severity') == 'high']
+            
+            if critical_findings or high_findings:
+                lines.append("KEY FINDINGS")
+                lines.append("-" * 40)
+                
+                for vuln in critical_findings[:5]:  # Top 5 critical
+                    lines.append(f"🔴 CRITICAL: {vuln.get('title', 'Unknown')}")
+                    lines.append(f"   Target: {vuln.get('target', 'N/A')}")
+                    lines.append(f"   Description: {vuln.get('description', 'N/A')[:100]}...")
+                    lines.append("")
+                
+                for vuln in high_findings[:5]:  # Top 5 high
+                    lines.append(f"🟠 HIGH: {vuln.get('title', 'Unknown')}")
+                    lines.append(f"   Target: {vuln.get('target', 'N/A')}")
+                    lines.append(f"   Description: {vuln.get('description', 'N/A')[:100]}...")
+                    lines.append("")
         
         # Subdomains
         if 'subdomains' in data and data['subdomains']:
             lines.append("DISCOVERED SUBDOMAINS")
             lines.append("-" * 40)
-            for subdomain in data['subdomains']:
+            
+            # Group by status
+            live_subdomains = [s for s in data['subdomains'] if s.get('status_code') and str(s['status_code']).startswith(('2', '3'))]
+            dead_subdomains = [s for s in data['subdomains'] if not s.get('status_code') or str(s['status_code']).startswith(('4', '5'))]
+            
+            lines.append(f"Live Subdomains ({len(live_subdomains)}):")
+            for subdomain in live_subdomains[:20]:  # Limit to 20
                 ip_info = f" [{subdomain.get('ip_address', 'N/A')}]" if subdomain.get('ip_address') else ""
                 status = f" ({subdomain.get('status_code', 'N/A')})" if subdomain.get('status_code') else ""
-                lines.append(f"  {subdomain.get('subdomain', 'N/A')}{ip_info}{status}")
+                lines.append(f"  ✓ {subdomain.get('subdomain', 'N/A')}{ip_info}{status}")
+            
+            if len(live_subdomains) > 20:
+                lines.append(f"  ... and {len(live_subdomains) - 20} more")
             lines.append("")
+        
+        # Recommendations
+        lines.append("RECOMMENDATIONS")
+        lines.append("-" * 40)
+        recommendations = ReportGenerator._generate_recommendations(data)
+        for i, rec in enumerate(recommendations, 1):
+            lines.append(f"{i}. {rec}")
+        lines.append("")
+        
+        # Technical Details
+        lines.append("TECHNICAL DETAILS")
+        lines.append("-" * 40)
+        lines.append(f"ReconForge Version: 1.1.0")
+        lines.append(f"Scan ID: {data.get('scan_info', {}).get('id', 'N/A')}")
+        lines.append(f"Report Format: Plain Text")
+        lines.append("="*80)
+        
+        return "\n".join(lines)
+    
+    @staticmethod 
+    def generate_html_report(data: Dict[str, Any]) -> str:
+        """Generate comprehensive HTML report with charts"""
+        html = f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReconForge Security Report - {data.get('scan_info', {}).get('target', 'Unknown')}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .severity-critical {{ background: #dc3545; color: white; }}
+        .severity-high {{ background: #fd7e14; color: white; }}
+        .severity-medium {{ background: #ffc107; color: black; }}
+        .severity-low {{ background: #198754; color: white; }}
+        .severity-info {{ background: #0dcaf0; color: black; }}
+        .risk-critical {{ color: #dc3545; font-weight: bold; }}
+        .risk-high {{ color: #fd7e14; font-weight: bold; }}
+        .risk-medium {{ color: #ffc107; font-weight: bold; }}
+        .risk-low {{ color: #198754; font-weight: bold; }}
+        .chart-container {{ width: 100%; height: 300px; }}
+    </style>
+</head>
+<body>
+    <div class="container-fluid py-4">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card bg-primary text-white">
+                    <div class="card-body">
+                        <h1 class="card-title"><i class="bi bi-shield-check"></i> ReconForge Security Assessment Report</h1>
+                        <p class="card-text">Target: <strong>{data.get('scan_info', {}).get('target', 'Unknown')}</strong></p>
+                        <p class="card-text">Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Executive Summary -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title mb-0"><i class="bi bi-clipboard-check"></i> Executive Summary</h2>
+                    </div>
+                    <div class="card-body">
+                        {ReportGenerator._generate_executive_summary_html(data)}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Dashboard -->
+        <div class="row mb-4">
+            <div class="col-md-3 mb-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h3 class="text-primary">{data.get('stats', {}).get('total_subdomains', 0)}</h3>
+                        <p class="text-muted">Subdomains</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h3 class="text-danger">{data.get('stats', {}).get('total_vulnerabilities', 0)}</h3>
+                        <p class="text-muted">Vulnerabilities</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h3 class="text-info">{data.get('stats', {}).get('total_services', 0)}</h3>
+                        <p class="text-muted">Services</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h3 class="text-warning">{ReportGenerator._calculate_risk_score(data)}</h3>
+                        <p class="text-muted">Risk Score</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Vulnerability Distribution</h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="vulnChart" class="chart-container"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Discovery Sources</h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="sourcesChart" class="chart-container"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vulnerabilities Table -->
+        {ReportGenerator._generate_vulnerabilities_table_html(data)}
+
+        <!-- Subdomains Table -->
+        {ReportGenerator._generate_subdomains_table_html(data)}
+
+        <!-- Recommendations -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title mb-0"><i class="bi bi-lightbulb"></i> Recommendations</h2>
+                    </div>
+                    <div class="card-body">
+                        {ReportGenerator._generate_recommendations_html(data)}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Initialize charts
+        {ReportGenerator._generate_chart_scripts(data)}
+    </script>
+</body>
+</html>"""
+        return html
+    
+    @staticmethod
+    def generate_json_report(data: Dict[str, Any]) -> Dict[str, Any]:
+        """Generate comprehensive JSON report"""
+        return {
+            "report_metadata": {
+                "generated_at": datetime.now().isoformat(),
+                "reconforge_version": "1.1.0",
+                "report_format": "json",
+                "report_type": "comprehensive"
+            },
+            "scan_info": data.get('scan_info', {}),
+            "executive_summary": {
+                "risk_score": ReportGenerator._calculate_risk_score(data),
+                "risk_level": ReportGenerator._get_risk_level(ReportGenerator._calculate_risk_score(data)),
+                "total_findings": len(data.get('vulnerabilities', [])),
+                "critical_findings": len([v for v in data.get('vulnerabilities', []) if v.get('severity') == 'critical']),
+                "recommendations_count": len(ReportGenerator._generate_recommendations(data))
+            },
+            "statistics": data.get('stats', {}),
+            "vulnerabilities": data.get('vulnerabilities', []),
+            "subdomains": data.get('subdomains', []),
+            "services": data.get('services', []),
+            "pentest_results": data.get('pentest_results', []),
+            "recommendations": ReportGenerator._generate_recommendations(data),
+            "technical_details": {
+                "modules_used": data.get('scan_info', {}).get('modules_used', []),
+                "sources_used": data.get('scan_info', {}).get('sources_used', []),
+                "scan_duration": data.get('scan_info', {}).get('duration', 0),
+                "scan_id": data.get('scan_info', {}).get('id')
+            }
+        }
+    
+    @staticmethod
+    def generate_xml_report(data: Dict[str, Any]) -> str:
+        """Generate XML report compatible with security tools"""
+        import xml.etree.ElementTree as ET
+        
+        root = ET.Element("reconforge_report")
+        root.set("version", "1.1.0")
+        root.set("generated", datetime.now().isoformat())
+        
+        # Scan info
+        scan_info = ET.SubElement(root, "scan_info")
+        scan_data = data.get('scan_info', {})
+        for key, value in scan_data.items():
+            elem = ET.SubElement(scan_info, key)
+            elem.text = str(value)
+        
+        # Statistics
+        stats = ET.SubElement(root, "statistics")
+        stats_data = data.get('stats', {})
+        for key, value in stats_data.items():
+            elem = ET.SubElement(stats, key)
+            elem.text = str(value)
+        
+        # Vulnerabilities
+        vulnerabilities = ET.SubElement(root, "vulnerabilities")
+        for vuln in data.get('vulnerabilities', []):
+            vuln_elem = ET.SubElement(vulnerabilities, "vulnerability")
+            for key, value in vuln.items():
+                elem = ET.SubElement(vuln_elem, key)
+                elem.text = str(value)
+        
+        # Subdomains
+        subdomains = ET.SubElement(root, "subdomains")
+        for subdomain in data.get('subdomains', []):
+            sub_elem = ET.SubElement(subdomains, "subdomain")
+            for key, value in subdomain.items():
+                elem = ET.SubElement(sub_elem, key)
+                elem.text = str(value)
+        
+        return ET.tostring(root, encoding='unicode', method='xml')
+    
+    @staticmethod
+    def generate_csv_report(data: Dict[str, Any], report_type: str = 'vulnerabilities') -> str:
+        """Generate CSV report for specific data type"""
+        import csv
+        import io
+        
+        output = io.StringIO()
+        
+        if report_type == 'vulnerabilities':
+            vulnerabilities = data.get('vulnerabilities', [])
+            if vulnerabilities:
+                fieldnames = ['title', 'severity', 'target', 'description', 'url', 'cve_id', 'confidence', 'verified']
+                writer = csv.DictWriter(output, fieldnames=fieldnames)
+                writer.writeheader()
+                
+                for vuln in vulnerabilities:
+                    writer.writerow({
+                        'title': vuln.get('title', ''),
+                        'severity': vuln.get('severity', ''),
+                        'target': vuln.get('target', ''),
+                        'description': vuln.get('description', ''),
+                        'url': vuln.get('url', ''),
+                        'cve_id': vuln.get('cve_id', ''),
+                        'confidence': vuln.get('confidence', ''),
+                        'verified': vuln.get('verified', '')
+                    })
+        
+        elif report_type == 'subdomains':
+            subdomains = data.get('subdomains', [])
+            if subdomains:
+                fieldnames = ['subdomain', 'ip_address', 'status_code', 'title', 'technologies', 'source']
+                writer = csv.DictWriter(output, fieldnames=fieldnames)
+                writer.writeheader()
+                
+                for sub in subdomains:
+                    writer.writerow({
+                        'subdomain': sub.get('subdomain', ''),
+                        'ip_address': sub.get('ip_address', ''),
+                        'status_code': sub.get('status_code', ''),
+                        'title': sub.get('title', ''),
+                        'technologies': ', '.join(sub.get('technologies', [])),
+                        'source': sub.get('source', '')
+                    })
+        
+        return output.getvalue()
+    
+    @staticmethod
+    def _calculate_risk_score(data: Dict[str, Any]) -> int:
+        """Calculate overall risk score (0-100)"""
+        score = 0
+        vulnerabilities = data.get('vulnerabilities', [])
+        
+        # Weight vulnerabilities by severity
+        for vuln in vulnerabilities:
+            severity = vuln.get('severity', '').lower()
+            if severity == 'critical':
+                score += 25
+            elif severity == 'high':
+                score += 15
+            elif severity == 'medium':
+                score += 8
+            elif severity == 'low':
+                score += 3
+            elif severity == 'info':
+                score += 1
+        
+        # Cap at 100
+        return min(score, 100)
+    
+    @staticmethod
+    def _get_risk_level(score: int) -> str:
+        """Get risk level based on score"""
+        if score >= 80:
+            return "CRITICAL"
+        elif score >= 60:
+            return "HIGH"
+        elif score >= 40:
+            return "MEDIUM"
+        elif score >= 20:
+            return "LOW"
+        else:
+            return "MINIMAL"
+    
+    @staticmethod
+    def _generate_recommendations(data: Dict[str, Any]) -> List[str]:
+        """Generate security recommendations based on findings"""
+        recommendations = []
+        vulnerabilities = data.get('vulnerabilities', [])
+        
+        # Group vulnerabilities by type
+        vuln_types = {}
+        for vuln in vulnerabilities:
+            vuln_type = vuln.get('vulnerability_type', 'Unknown')
+            if vuln_type not in vuln_types:
+                vuln_types[vuln_type] = 0
+            vuln_types[vuln_type] += 1
+        
+        # Generate specific recommendations
+        if 'SQL Injection' in vuln_types:
+            recommendations.append("Implement parameterized queries and input validation to prevent SQL injection attacks")
+        
+        if 'Cross-Site Scripting' in vuln_types:
+            recommendations.append("Apply proper output encoding and Content Security Policy to mitigate XSS vulnerabilities")
+        
+        if 'Remote Code Execution' in vuln_types:
+            recommendations.append("URGENT: Patch RCE vulnerabilities immediately and restrict system command execution")
+        
+        if 'Server-Side Request Forgery' in vuln_types:
+            recommendations.append("Implement URL validation and network segmentation to prevent SSRF attacks")
+        
+        if 'XML External Entity' in vuln_types:
+            recommendations.append("Disable XML external entity processing and validate XML input properly")
+        
+        # General recommendations
+        critical_count = len([v for v in vulnerabilities if v.get('severity') == 'critical'])
+        if critical_count > 0:
+            recommendations.append("Prioritize remediation of critical vulnerabilities within 24-48 hours")
+        
+        subdomain_count = len(data.get('subdomains', []))
+        if subdomain_count > 50:
+            recommendations.append("Review and inventory discovered subdomains for unauthorized or forgotten assets")
+        
+        # Default recommendations
+        if not recommendations:
+            recommendations.extend([
+                "Implement regular security assessments and penetration testing",
+                "Keep all systems and applications up to date with security patches",
+                "Deploy Web Application Firewall (WAF) for additional protection",
+                "Implement comprehensive logging and monitoring solutions"
+            ])
+        
+        return recommendations
+    
+    @staticmethod
+    def _generate_executive_summary_html(data: Dict[str, Any]) -> str:
+        """Generate HTML executive summary"""
+        total_vulns = data.get('stats', {}).get('total_vulnerabilities', 0)
+        critical_vulns = len([v for v in data.get('vulnerabilities', []) if v.get('severity') == 'critical'])
+        high_vulns = len([v for v in data.get('vulnerabilities', []) if v.get('severity') == 'high'])
+        risk_score = ReportGenerator._calculate_risk_score(data)
+        risk_level = ReportGenerator._get_risk_level(risk_score)
+        
+        html = f'<div class="alert alert-'
+        
+        if critical_vulns > 0:
+            html += 'danger" role="alert">'
+            html += f'<i class="bi bi-exclamation-triangle-fill"></i> <strong>CRITICAL FINDINGS:</strong> '
+            html += f'{critical_vulns} critical vulnerabilities require immediate attention.'
+        elif high_vulns > 0:
+            html += 'warning" role="alert">'
+            html += f'<i class="bi bi-exclamation-triangle"></i> <strong>HIGH RISK:</strong> '
+            html += f'{high_vulns} high-severity vulnerabilities identified.'
+        elif total_vulns > 0:
+            html += 'info" role="alert">'
+            html += f'<i class="bi bi-info-circle"></i> {total_vulns} vulnerabilities identified with medium/low severity.'
+        else:
+            html += 'success" role="alert">'
+            html += '<i class="bi bi-check-circle"></i> No vulnerabilities were identified during the assessment.'
+        
+        html += '</div>'
+        html += f'<p>Overall Risk Level: <span class="risk-{risk_level.lower()}">{risk_level}</span> (Score: {risk_score}/100)</p>'
+        
+        return html
+    
+    @staticmethod
+    def _generate_vulnerabilities_table_html(data: Dict[str, Any]) -> str:
+        """Generate HTML vulnerabilities table"""
+        vulnerabilities = data.get('vulnerabilities', [])
+        
+        if not vulnerabilities:
+            return '<div class="alert alert-success">No vulnerabilities found.</div>'
+        
+        html = '''
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title mb-0"><i class="bi bi-bug"></i> Vulnerabilities</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Severity</th>
+                                        <th>Title</th>
+                                        <th>Target</th>
+                                        <th>Type</th>
+                                        <th>Confidence</th>
+                                        <th>CVE</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+        '''
+        
+        # Sort by severity
+        severity_order = {'critical': 0, 'high': 1, 'medium': 2, 'low': 3, 'info': 4}
+        sorted_vulns = sorted(vulnerabilities, key=lambda x: severity_order.get(x.get('severity', 'info'), 4))
+        
+        for vuln in sorted_vulns:
+            severity = vuln.get('severity', 'info')
+            confidence = vuln.get('confidence', 0)
+            confidence_percent = int(confidence * 100) if isinstance(confidence, float) else confidence
+            
+            html += f'''
+                    <tr>
+                        <td><span class="badge severity-{severity}">{severity.upper()}</span></td>
+                        <td>{vuln.get('title', 'Unknown')[:50]}...</td>
+                        <td><small>{vuln.get('target', 'N/A')}</small></td>
+                        <td>{vuln.get('vulnerability_type', 'Unknown')}</td>
+                        <td>{confidence_percent}%</td>
+                        <td>{vuln.get('cve_id', 'N/A')}</td>
+                    </tr>
+            '''
+        
+        html += '''
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        '''
+        
+        return html
+    
+    @staticmethod
+    def _generate_subdomains_table_html(data: Dict[str, Any]) -> str:
+        """Generate HTML subdomains table"""
+        subdomains = data.get('subdomains', [])
+        
+        if not subdomains:
+            return '<div class="alert alert-info">No subdomains discovered.</div>'
+        
+        html = '''
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title mb-0"><i class="bi bi-globe"></i> Discovered Subdomains</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Subdomain</th>
+                                        <th>IP Address</th>
+                                        <th>Status</th>
+                                        <th>Title</th>
+                                        <th>Technologies</th>
+                                        <th>Source</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+        '''
+        
+        for subdomain in subdomains[:50]:  # Limit to 50 for HTML display
+            status_code = subdomain.get('status_code', 'N/A')
+            status_class = 'success' if str(status_code).startswith(('2', '3')) else 'secondary'
+            technologies = ', '.join(subdomain.get('technologies', []))
+            
+            html += f'''
+                    <tr>
+                        <td><strong>{subdomain.get('subdomain', 'N/A')}</strong></td>
+                        <td><code>{subdomain.get('ip_address', 'N/A')}</code></td>
+                        <td><span class="badge bg-{status_class}">{status_code}</span></td>
+                        <td>{subdomain.get('title', 'N/A')[:30]}...</td>
+                        <td><small>{technologies[:50]}...</small></td>
+                        <td>{subdomain.get('source', 'N/A')}</td>
+                    </tr>
+            '''
+        
+        if len(subdomains) > 50:
+            html += f'<tr><td colspan="6" class="text-center"><em>... and {len(subdomains) - 50} more subdomains</em></td></tr>'
+        
+        html += '''
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        '''
+        
+        return html
+    
+    @staticmethod
+    def _generate_recommendations_html(data: Dict[str, Any]) -> str:
+        """Generate HTML recommendations"""
+        recommendations = ReportGenerator._generate_recommendations(data)
+        
+        html = '<ol class="list-group list-group-numbered">'
+        for rec in recommendations:
+            html += f'<li class="list-group-item">{rec}</li>'
+        html += '</ol>'
+        
+        return html
+    
+    @staticmethod
+    def _generate_chart_scripts(data: Dict[str, Any]) -> str:
+        """Generate JavaScript for charts"""
+        vulnerabilities = data.get('vulnerabilities', [])
+        subdomains = data.get('subdomains', [])
+        
+        # Vulnerability severity distribution
+        severity_counts = {'critical': 0, 'high': 0, 'medium': 0, 'low': 0, 'info': 0}
+        for vuln in vulnerabilities:
+            severity = vuln.get('severity', 'info').lower()
+            if severity in severity_counts:
+                severity_counts[severity] += 1
+        
+        # Source distribution
+        source_counts = {}
+        for sub in subdomains:
+            source = sub.get('source', 'Unknown')
+            source_counts[source] = source_counts.get(source, 0) + 1
+        
+        js = f'''
+        // Vulnerability distribution chart
+        const vulnCtx = document.getElementById('vulnChart').getContext('2d');
+        new Chart(vulnCtx, {{
+            type: 'doughnut',
+            data: {{
+                labels: ['Critical', 'High', 'Medium', 'Low', 'Info'],
+                datasets: [{{
+                    data: [{severity_counts['critical']}, {severity_counts['high']}, {severity_counts['medium']}, {severity_counts['low']}, {severity_counts['info']}],
+                    backgroundColor: ['#dc3545', '#fd7e14', '#ffc107', '#198754', '#0dcaf0']
+                }}]
+            }},
+            options: {{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {{
+                    legend: {{
+                        position: 'bottom'
+                    }}
+                }}
+            }}
+        }});
+        
+        // Sources distribution chart
+        const sourcesCtx = document.getElementById('sourcesChart').getContext('2d');
+        new Chart(sourcesCtx, {{
+            type: 'bar',
+            data: {{
+                labels: {list(source_counts.keys())},
+                datasets: [{{
+                    label: 'Subdomains',
+                    data: {list(source_counts.values())},
+                    backgroundColor: '#0d6efd'
+                }}]
+            }},
+            options: {{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {{
+                    legend: {{
+                        display: false
+                    }}
+                }}
+            }}
+        }});
+        '''
+        
+        return js
         
         # Vulnerabilities
         if 'vulnerabilities' in data and data['vulnerabilities']:

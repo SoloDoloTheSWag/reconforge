@@ -1,0 +1,705 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Enhanced Hero Section with Real-time Status -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="hero-section rounded shadow-sm p-4 position-relative">
+            <div class="row align-items-center">
+                <div class="col-lg-8">
+                    <h1 class="display-5 fw-bold mb-3">
+                        <i class="bi bi-shield-check-fill"></i> ReconForge Advanced Dashboard
+                    </h1>
+                    <p class="lead mb-2">Professional Reconnaissance and Penetration Testing Platform</p>
+                    <p class="mb-3">Automated subdomain discovery, vulnerability scanning, and penetration testing</p>
+                    
+                    <!-- System Status Indicators -->
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="badge bg-success d-flex align-items-center gap-1" id="systemStatus">
+                            <i class="bi bi-circle-fill" style="font-size: 0.5rem;"></i>
+                            System Online
+                        </span>
+                        <span class="badge bg-info d-flex align-items-center gap-1" id="activeScans">
+                            <i class="bi bi-activity"></i>
+                            <span id="activeScanCount">0</span> Active Scans
+                        </span>
+                        <span class="badge bg-warning d-flex align-items-center gap-1" id="queuedScans">
+                            <i class="bi bi-clock"></i>
+                            <span id="queuedScanCount">0</span> Queued
+                        </span>
+                    </div>
+                </div>
+                <div class="col-lg-4 text-end">
+                    <div class="btn-group-vertical w-100" role="group">
+                        <a href="/discover" class="btn btn-light btn-lg mb-2">
+                            <i class="bi bi-search"></i> Start Discovery
+                        </a>
+                        <a href="/scan" class="btn btn-outline-light btn-lg mb-2">
+                            <i class="bi bi-bug"></i> Vulnerability Scan
+                        </a>
+                        <a href="/pentest" class="btn btn-danger btn-lg">
+                            <i class="bi bi-shield-exclamation"></i> Penetration Test
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Real-time Activity Indicator -->
+            <div class="position-absolute top-0 end-0 m-3">
+                <div class="spinner-border text-light" role="status" id="activitySpinner" style="display: none;">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Enhanced Statistics Cards with Charts -->
+<div class="row mb-4">
+    <!-- Total Scans Card with Mini Chart -->
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <div class="text-uppercase fw-bold text-primary small">
+                            Total Scans
+                        </div>
+                        <div class="h5 mb-0 fw-bold text-dark" id="totalScans">
+                            {% if stats %}{{ stats.total_scans }}{% else %}0{% endif %}
+                        </div>
+                        <div class="text-success small">
+                            <i class="bi bi-arrow-up"></i>
+                            <span id="scanGrowth">+12%</span> from last week
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <canvas id="scanChart" width="60" height="40"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vulnerabilities Found -->
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <div class="text-uppercase fw-bold text-danger small">
+                            Vulnerabilities
+                        </div>
+                        <div class="h5 mb-0 fw-bold text-dark" id="totalVulns">
+                            {% if stats %}{{ stats.total_vulnerabilities }}{% else %}0{% endif %}
+                        </div>
+                        <div class="row g-1 mt-1">
+                            <div class="col-auto">
+                                <span class="badge bg-danger" id="criticalCount">
+                                    {% if stats %}{{ stats.critical_vulns }}{% else %}0{% endif %}
+                                </span>
+                            </div>
+                            <div class="col-auto">
+                                <span class="badge bg-warning" id="highCount">
+                                    {% if stats %}{{ stats.high_vulns }}{% else %}0{% endif %}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <canvas id="vulnChart" width="60" height="40"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Domains Discovered -->
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <div class="text-uppercase fw-bold text-success small">
+                            Subdomains
+                        </div>
+                        <div class="h5 mb-0 fw-bold text-dark" id="totalSubdomains">
+                            {% if stats %}{{ stats.total_subdomains }}{% else %}0{% endif %}
+                        </div>
+                        <div class="text-info small">
+                            <span id="uniqueDomains">
+                                {% if stats %}{{ stats.unique_domains }}{% else %}0{% endif %}
+                            </span> unique targets
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-globe text-muted" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Performance -->
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <div class="text-uppercase fw-bold text-info small">
+                            Performance
+                        </div>
+                        <div class="h5 mb-0 fw-bold text-dark">
+                            <span id="avgScanTime">2.3</span>m
+                        </div>
+                        <div class="small text-muted">
+                            Avg scan time
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <div class="progress-circle" data-percentage="75">
+                            <svg viewBox="0 0 42 42" width="42" height="42">
+                                <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#e9ecef" stroke-width="3"></circle>
+                                <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#0d6efd" stroke-width="3" stroke-dasharray="75 25" stroke-dashoffset="25" transform="rotate(-90 21 21)"></circle>
+                            </svg>
+                            <div class="progress-text">75%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Activity Timeline and Recent Scans -->
+<div class="row mb-4">
+    <!-- Activity Timeline -->
+    <div class="col-lg-8 mb-3">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-clock-history"></i> Recent Activity
+                </h6>
+                <button class="btn btn-sm btn-outline-secondary" onclick="refreshActivity()">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="timeline" id="activityTimeline">
+                    <!-- Timeline items will be populated via JavaScript -->
+                    <div class="timeline-item">
+                        <div class="timeline-marker bg-success"></div>
+                        <div class="timeline-content">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h6 class="mb-1">Vulnerability scan completed</h6>
+                                <small class="text-muted">2 minutes ago</small>
+                            </div>
+                            <p class="small mb-0">Found 3 high-severity vulnerabilities on example.com</p>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-item">
+                        <div class="timeline-marker bg-info"></div>
+                        <div class="timeline-content">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h6 class="mb-1">Subdomain discovery started</h6>
+                                <small class="text-muted">5 minutes ago</small>
+                            </div>
+                            <p class="small mb-0">Discovering subdomains for test.com using 8 sources</p>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-item">
+                        <div class="timeline-marker bg-warning"></div>
+                        <div class="timeline-content">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h6 class="mb-1">Penetration test initiated</h6>
+                                <small class="text-muted">10 minutes ago</small>
+                            </div>
+                            <p class="small mb-0">Running 6 pentest modules against target.com</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions & Status -->
+    <div class="col-lg-4 mb-3">
+        <div class="card h-100">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-lightning-charge"></i> Quick Actions
+                </h6>
+            </div>
+            <div class="card-body">
+                <!-- Quick Target Input -->
+                <div class="mb-3">
+                    <label for="quickTarget" class="form-label small">Quick Scan Target</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="quickTarget" placeholder="example.com">
+                        <button class="btn btn-primary" type="button" onclick="quickScan()">
+                            <i class="bi bi-play-fill"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- System Status -->
+                <div class="mb-3">
+                    <h6 class="small text-uppercase fw-bold mb-2">System Status</h6>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="small">CPU Usage</span>
+                        <span class="small">45%</span>
+                    </div>
+                    <div class="progress mb-2" style="height: 4px;">
+                        <div class="progress-bar bg-warning" style="width: 45%"></div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="small">Memory</span>
+                        <span class="small">62%</span>
+                    </div>
+                    <div class="progress mb-2" style="height: 4px;">
+                        <div class="progress-bar bg-info" style="width: 62%"></div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="small">Active Connections</span>
+                        <span class="small" id="activeConnections">8</span>
+                    </div>
+                </div>
+
+                <!-- Tool Status -->
+                <div>
+                    <h6 class="small text-uppercase fw-bold mb-2">Tools Status</h6>
+                    <div class="row g-1">
+                        <div class="col-6">
+                            <span class="badge bg-success w-100">Nuclei ✓</span>
+                        </div>
+                        <div class="col-6">
+                            <span class="badge bg-success w-100">Nikto ✓</span>
+                        </div>
+                        <div class="col-6">
+                            <span class="badge bg-success w-100">Subfinder ✓</span>
+                        </div>
+                        <div class="col-6">
+                            <span class="badge bg-warning w-100">Amass ⚠</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Scans Table -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-table"></i> Recent Scans
+                </h6>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-secondary active" data-filter="all">All</button>
+                    <button class="btn btn-outline-secondary" data-filter="discover">Discovery</button>
+                    <button class="btn btn-outline-secondary" data-filter="scan">Vulnerability</button>
+                    <button class="btn btn-outline-secondary" data-filter="pentest">Pentest</button>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="recentScansTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Target</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>Started</th>
+                            <th>Duration</th>
+                            <th>Results</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Table rows will be populated via JavaScript -->
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-globe text-primary me-2"></i>
+                                    <span>example.com</span>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge bg-info">Discovery</span>
+                            </td>
+                            <td>
+                                <span class="badge bg-success">
+                                    <i class="bi bi-check-circle"></i> Complete
+                                </span>
+                            </td>
+                            <td>
+                                <small class="text-muted">2024-01-26 14:30</small>
+                            </td>
+                            <td>
+                                <small>2m 34s</small>
+                            </td>
+                            <td>
+                                <small class="text-success">47 subdomains</small>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-primary btn-sm">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                    <button class="btn btn-outline-secondary btn-sm">
+                                        <i class="bi bi-download"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.progress-circle {
+    position: relative;
+    width: 42px;
+    height: 42px;
+}
+
+.progress-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 0.7rem;
+    font-weight: bold;
+    color: #0d6efd;
+}
+
+.timeline {
+    position: relative;
+    padding-left: 30px;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -34px;
+    top: 5px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid white;
+    box-shadow: 0 0 0 2px #dee2e6;
+}
+
+.timeline-item:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: -29px;
+    top: 17px;
+    bottom: -20px;
+    width: 2px;
+    background-color: #dee2e6;
+}
+
+.hero-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    min-height: 180px;
+}
+</style>
+
+<script>
+// Initialize dashboard with real-time updates
+document.addEventListener('DOMContentLoaded', function() {
+    initializeDashboard();
+    startRealTimeUpdates();
+});
+
+function initializeDashboard() {
+    // Initialize mini charts
+    initializeMiniCharts();
+    
+    // Load recent activity
+    loadRecentActivity();
+    
+    // Load recent scans
+    loadRecentScans();
+    
+    // Check tool status
+    checkToolStatus();
+}
+
+function initializeMiniCharts() {
+    // Scan trend chart
+    const scanCtx = document.getElementById('scanChart').getContext('2d');
+    new Chart(scanCtx, {
+        type: 'line',
+        data: {
+            labels: ['', '', '', '', '', ''],
+            datasets: [{
+                data: [12, 19, 15, 25, 22, 30],
+                borderColor: '#0d6efd',
+                borderWidth: 2,
+                fill: false,
+                pointRadius: 0,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { display: false },
+                y: { display: false }
+            }
+        }
+    });
+
+    // Vulnerability trend chart
+    const vulnCtx = document.getElementById('vulnChart').getContext('2d');
+    new Chart(vulnCtx, {
+        type: 'bar',
+        data: {
+            labels: ['', '', '', '', '', ''],
+            datasets: [{
+                data: [5, 8, 3, 12, 7, 15],
+                backgroundColor: '#dc3545',
+                borderRadius: 2
+            }]
+        },
+        options: {
+            responsive: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { display: false },
+                y: { display: false }
+            }
+        }
+    });
+}
+
+function startRealTimeUpdates() {
+    // Update every 30 seconds
+    setInterval(() => {
+        updateSystemStatus();
+        updateActiveScans();
+        loadRecentActivity();
+    }, 30000);
+}
+
+function updateSystemStatus() {
+    // Update system metrics
+    fetch('/api/system/status')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('activeScanCount').textContent = data.active_scans || 0;
+            document.getElementById('queuedScanCount').textContent = data.queued_scans || 0;
+            document.getElementById('activeConnections').textContent = data.connections || 0;
+        })
+        .catch(error => console.error('Error updating system status:', error));
+}
+
+function updateActiveScans() {
+    // Show/hide activity spinner based on active scans
+    const activeScanCount = parseInt(document.getElementById('activeScanCount').textContent);
+    const spinner = document.getElementById('activitySpinner');
+    
+    if (activeScanCount > 0) {
+        spinner.style.display = 'block';
+    } else {
+        spinner.style.display = 'none';
+    }
+}
+
+function loadRecentActivity() {
+    fetch('/api/activity/recent')
+        .then(response => response.json())
+        .then(data => {
+            const timeline = document.getElementById('activityTimeline');
+            timeline.innerHTML = '';
+            
+            data.activities.forEach(activity => {
+                const item = createTimelineItem(activity);
+                timeline.appendChild(item);
+            });
+        })
+        .catch(error => console.error('Error loading recent activity:', error));
+}
+
+function createTimelineItem(activity) {
+    const item = document.createElement('div');
+    item.className = 'timeline-item';
+    
+    const statusColors = {
+        'completed': 'bg-success',
+        'running': 'bg-primary',
+        'failed': 'bg-danger',
+        'queued': 'bg-warning'
+    };
+    
+    item.innerHTML = `
+        <div class="timeline-marker ${statusColors[activity.status] || 'bg-secondary'}"></div>
+        <div class="timeline-content">
+            <div class="d-flex justify-content-between align-items-center">
+                <h6 class="mb-1">${activity.title}</h6>
+                <small class="text-muted">${activity.time_ago}</small>
+            </div>
+            <p class="small mb-0">${activity.description}</p>
+        </div>
+    `;
+    
+    return item;
+}
+
+function loadRecentScans() {
+    fetch('/api/scans/recent')
+        .then(response => response.json())
+        .then(data => {
+            const tbody = document.querySelector('#recentScansTable tbody');
+            tbody.innerHTML = '';
+            
+            data.scans.forEach(scan => {
+                const row = createScanRow(scan);
+                tbody.appendChild(row);
+            });
+        })
+        .catch(error => console.error('Error loading recent scans:', error));
+}
+
+function createScanRow(scan) {
+    const row = document.createElement('tr');
+    
+    const statusBadges = {
+        'completed': '<span class="badge bg-success"><i class="bi bi-check-circle"></i> Complete</span>',
+        'running': '<span class="badge bg-primary"><i class="bi bi-play-circle"></i> Running</span>',
+        'failed': '<span class="badge bg-danger"><i class="bi bi-x-circle"></i> Failed</span>',
+        'queued': '<span class="badge bg-warning"><i class="bi bi-clock"></i> Queued</span>'
+    };
+    
+    const typeBadges = {
+        'discovery': '<span class="badge bg-info">Discovery</span>',
+        'vulnerability': '<span class="badge bg-warning">Vulnerability</span>',
+        'pentest': '<span class="badge bg-danger">Pentest</span>'
+    };
+    
+    row.innerHTML = `
+        <td>
+            <div class="d-flex align-items-center">
+                <i class="bi bi-globe text-primary me-2"></i>
+                <span>${scan.target}</span>
+            </div>
+        </td>
+        <td>${typeBadges[scan.type] || scan.type}</td>
+        <td>${statusBadges[scan.status] || scan.status}</td>
+        <td><small class="text-muted">${scan.started_at}</small></td>
+        <td><small>${scan.duration || 'N/A'}</small></td>
+        <td><small class="text-success">${scan.results_summary || 'N/A'}</small></td>
+        <td>
+            <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-primary btn-sm" onclick="viewScan(${scan.id})">
+                    <i class="bi bi-eye"></i>
+                </button>
+                <button class="btn btn-outline-secondary btn-sm" onclick="downloadResults(${scan.id})">
+                    <i class="bi bi-download"></i>
+                </button>
+            </div>
+        </td>
+    `;
+    
+    return row;
+}
+
+function quickScan() {
+    const target = document.getElementById('quickTarget').value.trim();
+    if (!target) {
+        alert('Please enter a target domain');
+        return;
+    }
+    
+    // Show loading state
+    const button = event.target;
+    button.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+    button.disabled = true;
+    
+    // Redirect to scan page with target
+    window.location.href = `/scan?target=${encodeURIComponent(target)}`;
+}
+
+function refreshActivity() {
+    loadRecentActivity();
+    loadRecentScans();
+}
+
+function checkToolStatus() {
+    fetch('/api/tools/status')
+        .then(response => response.json())
+        .then(data => {
+            // Update tool status badges
+            Object.keys(data.tools).forEach(toolName => {
+                const badge = document.querySelector(`[data-tool="${toolName}"]`);
+                if (badge) {
+                    if (data.tools[toolName].available) {
+                        badge.className = 'badge bg-success w-100';
+                        badge.textContent = `${toolName} ✓`;
+                    } else {
+                        badge.className = 'badge bg-danger w-100';
+                        badge.textContent = `${toolName} ✗`;
+                    }
+                }
+            });
+        })
+        .catch(error => console.error('Error checking tool status:', error));
+}
+
+function viewScan(scanId) {
+    window.location.href = `/scans/${scanId}`;
+}
+
+function downloadResults(scanId) {
+    window.location.href = `/api/scans/${scanId}/download`;
+}
+
+// Filter recent scans table
+document.querySelectorAll('[data-filter]').forEach(button => {
+    button.addEventListener('click', function() {
+        // Remove active class from all buttons
+        document.querySelectorAll('[data-filter]').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        // Add active class to clicked button
+        this.classList.add('active');
+        
+        // Filter table rows
+        const filter = this.dataset.filter;
+        filterScanTable(filter);
+    });
+});
+
+function filterScanTable(filter) {
+    const rows = document.querySelectorAll('#recentScansTable tbody tr');
+    
+    rows.forEach(row => {
+        const typeCell = row.cells[1];
+        const scanType = typeCell.textContent.toLowerCase();
+        
+        if (filter === 'all' || scanType.includes(filter)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+</script>
+{% endblock %}

@@ -1,16 +1,16 @@
 # ReconForge
 
-[![GitHub stars](https://img.shields.io/github/stars/levon229/reconforge.svg)](https://github.com/levon229/reconforge/stargazers)
-[![GitHub forks](https://img.shields.io/github/forks/levon229/reconforge.svg)](https://github.com/levon229/reconforge/network)
-[![GitHub issues](https://img.shields.io/github/issues/levon229/reconforge.svg)](https://github.com/levon229/reconforge/issues)
-[![GitHub license](https://img.shields.io/github/license/levon229/reconforge.svg)](https://github.com/levon229/reconforge/blob/master/LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/SoloDoloTheSWag/reconforge.svg)](https://github.com/SoloDoloTheSWag/reconforge/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/SoloDoloTheSWag/reconforge.svg)](https://github.com/SoloDoloTheSWag/reconforge/network)
+[![GitHub issues](https://img.shields.io/github/issues/SoloDoloTheSWag/reconforge.svg)](https://github.com/SoloDoloTheSWag/reconforge/issues)
+[![GitHub license](https://img.shields.io/github/license/SoloDoloTheSWag/reconforge.svg)](https://github.com/SoloDoloTheSWag/reconforge/blob/master/LICENSE)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 
 **Professional Reconnaissance and Penetration Testing Framework**
 
 ReconForge is a comprehensive, production-ready penetration testing platform that automates the entire reconnaissance-to-exploitation pipeline. It combines passive and active subdomain discovery, vulnerability scanning, and penetration testing in a unified framework with both CLI and web interfaces.
 
-🔗 **Repository**: https://github.com/levon229/reconforge  
+🔗 **Repository**: https://github.com/SoloDoloTheSWag/reconforge  
 📖 **Documentation**: Complete setup and usage guide below  
 🛡️ **Security Focus**: Built for authorized penetration testing and security research
 
@@ -40,11 +40,47 @@ ReconForge is a comprehensive, production-ready penetration testing platform tha
 
 ### 🌐 Web Dashboard
 - **Modern UI Design**: Professional Bootstrap 5.3.2 interface with gradient themes
+- **🆕 Advanced Dashboard**: Real-time system metrics, activity timeline, performance monitoring
 - **Real-time Updates**: WebSocket-based live scan monitoring with visual status indicators
 - **Interactive Interface**: Clean, responsive web UI optimized for all devices
-- **Comprehensive Reporting**: JSON, HTML, Markdown, CSV, and TXT export capabilities
+- **🆕 Enhanced Reporting**: Professional HTML reports with charts, risk assessment, and executive summaries
+- **Comprehensive Exports**: JSON, HTML, Markdown, CSV, TXT, and XML export capabilities
 - **Scan Management**: History, comparison, and progress tracking with visual feedback
 - **Terminal Access**: Built-in web terminal for manual testing
+
+## 🆕 Enhanced Features (Latest Update)
+
+### 🔍 **Expanded Discovery Sources**
+- **6 New Passive Sources**: Shodan API, Censys certificates, Facebook CT, RapidDNS, DNSDB, GAU URLs
+- **3 New Active Methods**: FFuF virtual host fuzzing, DNS alteration patterns, domain permutation
+- **Intelligent Source Management**: API key configuration, rate limiting, error handling
+
+### 🛡️ **Advanced Vulnerability Scanning**
+- **🆕 Wapiti Scanner**: Professional web application vulnerability assessment
+- **🆕 OWASP ZAP Integration**: Both proxy mode and baseline scanning capabilities  
+- **🆕 TestSSL Scanner**: Comprehensive SSL/TLS security testing and configuration analysis
+- **Enhanced Nuclei**: Additional scanner configurations and custom template support
+
+### 🎯 **Comprehensive Penetration Testing**
+- **🆕 SSRF Testing Module**: Server-Side Request Forgery with cloud metadata detection
+- **🆕 XXE Testing Module**: XML External Entity vulnerability assessment with multiple payload types
+- **🆕 RCE Testing Module**: Remote Code Execution testing with command injection and template injection
+- **Advanced Payloads**: Cloud-specific tests, time-based detection, expression evaluation
+
+### 📊 **Professional Reporting & Analytics**  
+- **🆕 Risk Assessment**: Automated vulnerability scoring and risk level calculation
+- **🆕 Executive Summaries**: Business-ready reports with key findings and recommendations
+- **🆕 Interactive HTML Reports**: Charts, graphs, and professional styling with Bootstrap
+- **🆕 Multiple Export Formats**: Enhanced JSON, XML for tool integration, CSV for analysis
+- **🆕 Visual Analytics**: Vulnerability distribution charts, source effectiveness metrics
+
+### ⚡ **Performance & Resource Management**
+- **🆕 Resource Monitoring**: Real-time CPU, memory, disk, and network usage tracking
+- **🆕 Intelligent Caching**: TTL-based caching system with automatic cleanup and optimization
+- **🆕 Rate Limiting**: Configurable per-source and per-scanner rate limiting with multiple strategies
+- **🆕 Concurrency Control**: Adaptive task scheduling based on system resources and load
+- **🆕 Memory Optimization**: Efficient data structures, garbage collection, streaming results
+- **🆕 Performance Profiling**: Function-level performance monitoring and bottleneck identification
 - **Mobile Responsive**: Fully optimized for desktop, tablet, and mobile devices
 
 ### 📊 Professional Reporting
@@ -96,7 +132,7 @@ reconforge/
 
 1. **Clone the repository:**
 ```bash
-git clone https://github.com/levon229/reconforge.git
+git clone https://github.com/SoloDoloTheSWag/reconforge.git
 cd reconforge
 ```
 
@@ -437,9 +473,9 @@ Modules used: 3
 ## 🐙 GitHub Repository
 
 ### Repository Information
-- **Repository**: [levon229/reconforge](https://github.com/levon229/reconforge)
-- **Stars**: [Star this project](https://github.com/levon229/reconforge/stargazers) to show your support
-- **Issues**: [Report bugs or request features](https://github.com/levon229/reconforge/issues)
+- **Repository**: [SoloDoloTheSWag/reconforge](https://github.com/SoloDoloTheSWag/reconforge)
+- **Stars**: [Star this project](https://github.com/SoloDoloTheSWag/reconforge/stargazers) to show your support
+- **Issues**: [Report bugs or request features](https://github.com/SoloDoloTheSWag/reconforge/issues)
 - **License**: MIT License - see [LICENSE](LICENSE) file
 - **Version Control**: Git with comprehensive .gitignore for security
 
@@ -458,7 +494,7 @@ The repository includes security best practices:
 ### Clone and Setup
 ```bash
 # Clone the repository
-git clone https://github.com/levon229/reconforge.git
+git clone https://github.com/SoloDoloTheSWag/reconforge.git
 
 # Navigate to directory
 cd reconforge
@@ -496,7 +532,7 @@ git clone https://github.com/YOUR_USERNAME/reconforge.git
 cd reconforge
 
 # Add upstream remote
-git remote add upstream https://github.com/levon229/reconforge.git
+git remote add upstream https://github.com/SoloDoloTheSWag/reconforge.git
 
 # Create development branch
 git checkout -b feature/your-feature-name
@@ -580,9 +616,9 @@ tail -f logs/web.log
 - [FAQ](docs/faq.md)
 
 ### Community
-- [GitHub Issues](https://github.com/levon229/reconforge/issues) - Report bugs and request features
-- [GitHub Discussions](https://github.com/levon229/reconforge/discussions) - Community discussions
-- [GitHub Wiki](https://github.com/levon229/reconforge/wiki) - Extended documentation
+- [GitHub Issues](https://github.com/SoloDoloTheSWag/reconforge/issues) - Report bugs and request features
+- [GitHub Discussions](https://github.com/SoloDoloTheSWag/reconforge/discussions) - Community discussions
+- [GitHub Wiki](https://github.com/SoloDoloTheSWag/reconforge/wiki) - Extended documentation
 
 ### Professional Support
 For enterprise support and custom development, contact us at support@reconforge.com
@@ -609,13 +645,13 @@ python reconforge.py tools --install --force
 nuclei -update-templates
 
 # Check for latest releases
-gh release list --repo levon229/reconforge
+gh release list --repo SoloDoloTheSWag/reconforge
 ```
 
 ### Stay Updated
 - **Watch the Repository**: Click "Watch" on GitHub for notifications
-- **Check Releases**: Monitor [GitHub Releases](https://github.com/levon229/reconforge/releases)
-- **Follow Issues**: Track [GitHub Issues](https://github.com/levon229/reconforge/issues) for bug fixes
+- **Check Releases**: Monitor [GitHub Releases](https://github.com/SoloDoloTheSWag/reconforge/releases)
+- **Follow Issues**: Track [GitHub Issues](https://github.com/SoloDoloTheSWag/reconforge/issues) for bug fixes
 
 ---
 
@@ -623,7 +659,7 @@ gh release list --repo levon229/reconforge
 
 ### 🚀 **v1.1.0+ (Current - GitHub Release)**
 **Release Date**: January 2025  
-**Repository**: https://github.com/levon229/reconforge
+**Repository**: https://github.com/SoloDoloTheSWag/reconforge
 
 #### 🆕 **New Features:**
 - **GitHub Integration**: Complete repository setup with version control
@@ -686,7 +722,7 @@ gh release list --repo levon229/reconforge
 
 ### Security Reporting
 🛡️ If you discover a security vulnerability in ReconForge itself, please report it responsibly:
-- **GitHub Security Advisories**: [Private vulnerability reporting](https://github.com/levon229/reconforge/security/advisories)
+- **GitHub Security Advisories**: [Private vulnerability reporting](https://github.com/SoloDoloTheSWag/reconforge/security/advisories)
 - **GitHub Issues**: For non-security related bugs and features
 - **Email**: For sensitive security issues (if you prefer private disclosure)
 
@@ -699,7 +735,7 @@ gh release list --repo levon229/reconforge
 📢 **Share it** with the cybersecurity community  
 
 ### Quick Stats
-- **🚀 Repository**: [levon229/reconforge](https://github.com/levon229/reconforge)
+- **🚀 Repository**: [SoloDoloTheSWag/reconforge](https://github.com/SoloDoloTheSWag/reconforge)
 - **📊 Codebase**: 37 files, 15,172+ lines of code
 - **🛠️ Languages**: Python, HTML, CSS, JavaScript
 - **📝 License**: MIT License
@@ -728,7 +764,7 @@ gh release list --repo levon229/reconforge
 ### 📅 Latest Updates - January 26, 2025
 
 #### 🚀 **GitHub Integration & Repository Setup**
-- **Repository Created**: [levon229/reconforge](https://github.com/levon229/reconforge)
+- **Repository Created**: [SoloDoloTheSWag/reconforge](https://github.com/SoloDoloTheSWag/reconforge)
 - **Complete Project Structure**: 37 files, 15,172+ lines of professionally organized code
 - **Git Configuration**: Proper version control with comprehensive .gitignore
 - **Security Best Practices**: Sensitive data exclusion, clean commit history

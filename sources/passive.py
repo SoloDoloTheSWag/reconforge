@@ -483,6 +483,317 @@ class GAUSource(PassiveSource):
         return list(subdomains)
 
 
+class ShodanSource(PassiveSource):
+    """Shodan passive subdomain discovery"""
+    
+    def __init__(self, api_key: str = None):
+        super().__init__("shodan", "Shodan search engine for Internet-connected devices", api_key=api_key)
+    
+    async def discover(self, target: str, **kwargs) -> List[SubdomainResult]:
+        """Query Shodan API for subdomain information"""
+        if not self.api_key:
+            raise Exception("Shodan API key required")
+        
+        url = "https://api.shodan.io/shodan/host/search"
+        params = {
+            'key': self.api_key,
+            'query': f'hostname:{target}',
+            'facets': 'domain'
+        }
+        
+        try:
+            response = await HTTPHelper.make_request(
+                url, 
+                method='GET',
+                headers={'User-Agent': 'ReconForge/1.0'},
+                timeout=30
+            )
+            
+            if 'error' in response:
+                raise Exception(response['error'])
+            
+            if response.get('status') == 401:
+                raise Exception("Invalid Shodan API key")
+            
+            if response.get('status') != 200:
+                raise Exception(f"HTTP {response.get('status')}")
+            
+            data = json.loads(response.get('content', '{}'))
+            subdomains = set()
+            
+            # Extract hostnames from matches
+            for match in data.get('matches', []):
+                hostnames = match.get('hostnames', [])
+                for hostname in hostnames:
+                    if target in hostname:
+                        subdomains.add(hostname)
+                
+                # Also check the domain field
+                domains = match.get('domains', [])
+                for domain in domains:
+                    if target in domain:
+                        subdomains.add(domain)
+            
+            filtered = self.filter_results(list(subdomains), target)
+            
+            return [
+                SubdomainResult(
+                    subdomain=sub,
+                    source=self.name,
+                    confidence=0.9,
+                    metadata={"tool": "shodan", "api": True, "source": "search_results"}
+                ) for sub in filtered
+            ]
+            
+        except Exception as e:
+            main_logger.error(f"Shodan discovery failed: {e}")
+            raise
+
+
+class CensysSource(PassiveSource):
+    """Censys passive subdomain discovery"""
+    
+    def __init__(self, api_id: str = None, api_secret: str = None):
+        super().__init__("censys", "Censys Internet scanning platform")
+        self.api_id = api_id
+        self.api_secret = api_secret
+    
+    async def discover(self, target: str, **kwargs) -> List[SubdomainResult]:
+        """Query Censys API for certificate data"""
+        if not self.api_id or not self.api_secret:
+            raise Exception("Censys API credentials required")
+        
+        url = "https://search.censys.io/api/v2/certificates/search"
+        
+        import base64
+        auth_string = base64.b64encode(f"{self.api_id}:{self.api_secret}".encode()).decode()
+        headers = {
+            'Authorization': f'Basic {auth_string}',
+            'Content-Type': 'application/json',
+            'User-Agent': 'ReconForge/1.0'
+        }
+        
+        payload = {
+            'q': f'names: {target}',
+            'per_page': 100
+        }
+        
+        try:
+            response = await HTTPHelper.make_request(
+                url,
+                method='POST',
+                headers=headers,
+                data=json.dumps(payload),
+                timeout=30
+            )
+            
+            if 'error' in response:
+                raise Exception(response['error'])
+            
+            if response.get('status') == 401:
+                raise Exception("Invalid Censys API credentials")
+            
+            if response.get('status') != 200:
+                raise Exception(f"HTTP {response.get('status')}")
+            
+            data = json.loads(response.get('content', '{}'))
+            subdomains = set()
+            
+            # Extract names from certificate results
+            for result in data.get('result', {}).get('hits', []):
+                names = result.get('names', [])
+                for name in names:
+                    # Skip wildcards and extract valid subdomains
+                    if not name.startswith('*') and target in name:
+                        subdomains.add(name)
+            
+            filtered = self.filter_results(list(subdomains), target)
+            
+            return [
+                SubdomainResult(
+                    subdomain=sub,
+                    source=self.name,
+                    confidence=0.95,
+                    metadata={"tool": "censys", "api": True, "source": "certificates"}
+                ) for sub in filtered
+            ]
+            
+        except Exception as e:
+            main_logger.error(f"Censys discovery failed: {e}")
+            raise
+
+
+class FacebookCTSource(PassiveSource):
+    """Facebook Certificate Transparency API"""
+    
+    def __init__(self):
+        super().__init__("facebook_ct", "Facebook Certificate Transparency database")
+    
+    async def discover(self, target: str, **kwargs) -> List[SubdomainResult]:
+        """Query Facebook CT API"""
+        url = f"https://graph.facebook.com/certificates"
+        params = {
+            'query': target,
+            'fields': 'domains',
+            'limit': '1000',
+            'access_token': 'anonymous'  # Facebook CT allows anonymous access
+        }
+        
+        try:
+            response = await HTTPHelper.make_request(url, timeout=30)
+            
+            if 'error' in response:
+                raise Exception(response['error'])
+            
+            if response.get('status') != 200:
+                raise Exception(f"HTTP {response.get('status')}")
+            
+            data = json.loads(response.get('content', '{}'))
+            subdomains = set()
+            
+            # Extract domains from certificate data
+            for cert in data.get('data', []):
+                domains = cert.get('domains', [])
+                for domain in domains:
+                    if not domain.startswith('*') and target in domain:
+                        subdomains.add(domain)
+            
+            filtered = self.filter_results(list(subdomains), target)
+            
+            return [
+                SubdomainResult(
+                    subdomain=sub,
+                    source=self.name,
+                    confidence=0.9,
+                    metadata={"tool": "facebook_ct", "source": "certificate_transparency"}
+                ) for sub in filtered
+            ]
+            
+        except Exception as e:
+            main_logger.error(f"Facebook CT discovery failed: {e}")
+            raise
+
+
+class RapidDNSSource(PassiveSource):
+    """RapidDNS passive DNS database"""
+    
+    def __init__(self):
+        super().__init__("rapiddns", "RapidDNS passive DNS database")
+    
+    async def discover(self, target: str, **kwargs) -> List[SubdomainResult]:
+        """Query RapidDNS database"""
+        url = f"https://rapiddns.io/subdomain/{target}"
+        
+        try:
+            response = await HTTPHelper.make_request(
+                url,
+                headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'},
+                timeout=30
+            )
+            
+            if 'error' in response:
+                raise Exception(response['error'])
+            
+            if response.get('status') != 200:
+                raise Exception(f"HTTP {response.get('status')}")
+            
+            content = response.get('content', '')
+            
+            # Parse HTML to extract subdomains (simple regex approach)
+            import re
+            subdomain_pattern = r'([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)*' + re.escape(target)
+            matches = re.findall(subdomain_pattern, content)
+            
+            # Clean up matches
+            subdomains = set()
+            for match in matches:
+                if isinstance(match, tuple):
+                    # Extract the full match from tuple
+                    full_match = ''.join(match) + target
+                    if full_match.endswith(target):
+                        subdomains.add(full_match)
+                elif isinstance(match, str) and match.endswith(target):
+                    subdomains.add(match)
+            
+            filtered = self.filter_results(list(subdomains), target)
+            
+            return [
+                SubdomainResult(
+                    subdomain=sub,
+                    source=self.name,
+                    confidence=0.85,
+                    metadata={"tool": "rapiddns", "source": "passive_dns"}
+                ) for sub in filtered
+            ]
+            
+        except Exception as e:
+            main_logger.error(f"RapidDNS discovery failed: {e}")
+            raise
+
+
+class DNSDBSource(PassiveSource):
+    """Farsight DNSDB passive DNS database"""
+    
+    def __init__(self, api_key: str = None):
+        super().__init__("dnsdb", "Farsight DNSDB passive DNS database", api_key=api_key)
+    
+    async def discover(self, target: str, **kwargs) -> List[SubdomainResult]:
+        """Query DNSDB API"""
+        if not self.api_key:
+            raise Exception("DNSDB API key required")
+        
+        url = f"https://api.dnsdb.info/lookup/rrset/name/*.{target}"
+        headers = {
+            'X-API-Key': self.api_key,
+            'User-Agent': 'ReconForge/1.0'
+        }
+        
+        try:
+            response = await HTTPHelper.make_request(url, headers=headers, timeout=30)
+            
+            if 'error' in response:
+                raise Exception(response['error'])
+            
+            if response.get('status') == 401:
+                raise Exception("Invalid DNSDB API key")
+            
+            if response.get('status') != 200:
+                raise Exception(f"HTTP {response.get('status')}")
+            
+            content = response.get('content', '')
+            subdomains = set()
+            
+            # Parse NDJSON format
+            for line in content.split('\n'):
+                if not line.strip():
+                    continue
+                try:
+                    record = json.loads(line)
+                    rrname = record.get('rrname', '')
+                    if rrname and target in rrname:
+                        # Remove trailing dot from DNS names
+                        clean_name = rrname.rstrip('.')
+                        if clean_name != target:  # Don't include the target domain itself
+                            subdomains.add(clean_name)
+                except json.JSONDecodeError:
+                    continue
+            
+            filtered = self.filter_results(list(subdomains), target)
+            
+            return [
+                SubdomainResult(
+                    subdomain=sub,
+                    source=self.name,
+                    confidence=0.95,
+                    metadata={"tool": "dnsdb", "api": True, "source": "passive_dns"}
+                ) for sub in filtered
+            ]
+            
+        except Exception as e:
+            main_logger.error(f"DNSDB discovery failed: {e}")
+            raise
+
+
 def get_passive_sources(config: Dict[str, any] = None) -> List[PassiveSource]:
     """Get all available passive sources with configuration"""
     config = config or {}
@@ -495,6 +806,8 @@ def get_passive_sources(config: Dict[str, any] = None) -> List[PassiveSource]:
     sources.append(AmassSource(config.get('amass_config')))
     sources.append(CrtShSource())
     sources.append(WaybackSource())
+    sources.append(FacebookCTSource())
+    sources.append(RapidDNSSource())
     
     # Check for tool availability
     if ToolValidator.check_tool('gau')['available']:
@@ -506,5 +819,14 @@ def get_passive_sources(config: Dict[str, any] = None) -> List[PassiveSource]:
     
     if config.get('virustotal_api_key'):
         sources.append(VirusTotalSource(config['virustotal_api_key']))
+    
+    if config.get('shodan_api_key'):
+        sources.append(ShodanSource(config['shodan_api_key']))
+    
+    if config.get('censys_api_id') and config.get('censys_api_secret'):
+        sources.append(CensysSource(config['censys_api_id'], config['censys_api_secret']))
+    
+    if config.get('dnsdb_api_key'):
+        sources.append(DNSDBSource(config['dnsdb_api_key']))
     
     return sources

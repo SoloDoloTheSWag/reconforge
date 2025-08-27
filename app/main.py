@@ -215,6 +215,276 @@ async def dashboard(request: Request):
     })
 
 
+@app.get("/advanced-dashboard", response_class=HTMLResponse)
+async def advanced_dashboard(request: Request):
+    """Enhanced dashboard with real-time features"""
+    # Get comprehensive statistics
+    all_scans = db.get_scans(limit=1000)
+    recent_scans = db.get_scans(limit=10)
+    
+    # Calculate advanced statistics
+    total_vulnerabilities = sum(len(scan.get('vulnerabilities', [])) for scan in all_scans)
+    critical_vulns = sum(1 for scan in all_scans for vuln in scan.get('vulnerabilities', []) 
+                        if vuln.get('severity') == 'critical')
+    high_vulns = sum(1 for scan in all_scans for vuln in scan.get('vulnerabilities', []) 
+                    if vuln.get('severity') == 'high')
+    
+    total_subdomains = sum(len(scan.get('subdomains', [])) for scan in all_scans 
+                          if scan.get('scan_type') == 'discovery')
+    
+    unique_domains = len(set(scan.get('target', '') for scan in all_scans))
+    
+    tool_status = ToolValidator.check_all_tools()
+    available_tools = sum(1 for tool in tool_status.values() if tool['available'])
+    
+    stats = {
+        'total_scans': len(all_scans),
+        'active_scans': len(active_scans),
+        'total_vulnerabilities': total_vulnerabilities,
+        'critical_vulns': critical_vulns,
+        'high_vulns': high_vulns,
+        'total_subdomains': total_subdomains,
+        'unique_domains': unique_domains,
+        'available_tools': available_tools,
+        'total_tools': len(tool_status)
+    }
+    
+    return templates.TemplateResponse("advanced_dashboard.html", {
+        "request": request,
+        "recent_scans": recent_scans,
+        "stats": stats,
+        "page_title": "Advanced Dashboard"
+    })
+
+
+# Enhanced Dashboard API Endpoints
+
+@app.get("/api/system/status")
+async def get_system_status():
+    """Get real-time system status"""
+    import psutil
+    
+    try:
+        cpu_percent = psutil.cpu_percent(interval=1)
+        memory = psutil.virtual_memory()
+        
+        return {
+            "status": "online",
+            "cpu_usage": round(cpu_percent, 1),
+            "memory_usage": round(memory.percent, 1),
+            "active_scans": len(active_scans),
+            "queued_scans": 0,  # TODO: Implement queue system
+            "connections": len(websocket_connections),
+            "uptime": "24h 15m"  # TODO: Calculate actual uptime
+        }
+    except Exception as e:
+        web_logger.error(f"Failed to get system status: {e}")
+        return {
+            "status": "error",
+            "active_scans": len(active_scans),
+            "queued_scans": 0,
+            "connections": len(websocket_connections)
+        }
+
+
+@app.get("/api/activity/recent")
+async def get_recent_activity():
+    """Get recent system activity"""
+    try:
+        recent_scans = db.get_scans(limit=20)
+        activities = []
+        
+        for scan in recent_scans:
+            status = scan.get('status', 'unknown')
+            scan_type = scan.get('scan_type', 'scan')
+            target = scan.get('target', 'Unknown')
+            
+            # Calculate time ago
+            if scan.get('created_at'):
+                created_at = datetime.fromisoformat(scan['created_at'])
+                time_diff = datetime.now() - created_at
+                if time_diff.days > 0:
+                    time_ago = f"{time_diff.days} day{'s' if time_diff.days > 1 else ''} ago"
+                elif time_diff.seconds > 3600:
+                    hours = time_diff.seconds // 3600
+                    time_ago = f"{hours} hour{'s' if hours > 1 else ''} ago"
+                elif time_diff.seconds > 60:
+                    minutes = time_diff.seconds // 60
+                    time_ago = f"{minutes} minute{'s' if minutes > 1 else ''} ago"
+                else:
+                    time_ago = "Just now"
+            else:
+                time_ago = "Unknown"
+            
+            # Generate activity title and description
+            if scan_type == 'discovery':
+                title = "Subdomain discovery"
+                if status == 'completed':
+                    title += " completed"
+                    subdomain_count = len(scan.get('subdomains', []))
+                    description = f"Found {subdomain_count} subdomains for {target}"
+                elif status == 'running':
+                    title += " in progress"
+                    description = f"Discovering subdomains for {target}"
+                else:
+                    title += f" {status}"
+                    description = f"Subdomain discovery for {target}"
+            elif scan_type == 'vulnerability':
+                title = "Vulnerability scan"
+                if status == 'completed':
+                    title += " completed"
+                    vuln_count = len(scan.get('vulnerabilities', []))
+                    description = f"Found {vuln_count} vulnerabilities on {target}"
+                elif status == 'running':
+                    title += " in progress"
+                    description = f"Scanning {target} for vulnerabilities"
+                else:
+                    title += f" {status}"
+                    description = f"Vulnerability scan for {target}"
+            elif scan_type == 'pentest':
+                title = "Penetration test"
+                if status == 'completed':
+                    title += " completed"
+                    results_count = len(scan.get('pentest_results', []))
+                    description = f"Executed {results_count} tests against {target}"
+                elif status == 'running':
+                    title += " in progress"
+                    description = f"Running penetration tests against {target}"
+                else:
+                    title += f" {status}"
+                    description = f"Penetration test for {target}"
+            else:
+                title = f"Scan {status}"
+                description = f"General scan for {target}"
+            
+            activities.append({
+                "title": title,
+                "description": description,
+                "status": status,
+                "time_ago": time_ago,
+                "target": target,
+                "type": scan_type
+            })
+        
+        return {"activities": activities[:10]}  # Return top 10 activities
+        
+    except Exception as e:
+        web_logger.error(f"Failed to get recent activity: {e}")
+        return {"activities": []}
+
+
+@app.get("/api/scans/recent")
+async def get_recent_scans():
+    """Get recent scans for dashboard table"""
+    try:
+        recent_scans = db.get_scans(limit=15)
+        formatted_scans = []
+        
+        for scan in recent_scans:
+            # Format duration
+            duration = "N/A"
+            if scan.get('completed_at') and scan.get('started_at'):
+                try:
+                    start = datetime.fromisoformat(scan['started_at'])
+                    end = datetime.fromisoformat(scan['completed_at'])
+                    duration_seconds = (end - start).total_seconds()
+                    
+                    if duration_seconds >= 3600:
+                        hours = int(duration_seconds // 3600)
+                        minutes = int((duration_seconds % 3600) // 60)
+                        duration = f"{hours}h {minutes}m"
+                    elif duration_seconds >= 60:
+                        minutes = int(duration_seconds // 60)
+                        seconds = int(duration_seconds % 60)
+                        duration = f"{minutes}m {seconds}s"
+                    else:
+                        duration = f"{int(duration_seconds)}s"
+                except Exception:
+                    duration = "N/A"
+            
+            # Format results summary
+            results_summary = "N/A"
+            scan_type = scan.get('scan_type', 'scan')
+            
+            if scan_type == 'discovery' and scan.get('subdomains'):
+                results_summary = f"{len(scan['subdomains'])} subdomains"
+            elif scan_type == 'vulnerability' and scan.get('vulnerabilities'):
+                vuln_count = len(scan['vulnerabilities'])
+                critical_count = sum(1 for v in scan['vulnerabilities'] if v.get('severity') == 'critical')
+                if critical_count > 0:
+                    results_summary = f"{vuln_count} vulnerabilities ({critical_count} critical)"
+                else:
+                    results_summary = f"{vuln_count} vulnerabilities"
+            elif scan_type == 'pentest' and scan.get('pentest_results'):
+                results_count = len(scan['pentest_results'])
+                successful = sum(1 for r in scan['pentest_results'] if r.get('success'))
+                results_summary = f"{successful}/{results_count} tests successful"
+            
+            # Format started_at
+            started_at = "N/A"
+            if scan.get('created_at'):
+                try:
+                    created = datetime.fromisoformat(scan['created_at'])
+                    started_at = created.strftime("%Y-%m-%d %H:%M")
+                except Exception:
+                    started_at = scan['created_at'][:16] if len(scan['created_at']) > 16 else scan['created_at']
+            
+            formatted_scans.append({
+                "id": scan.get('id'),
+                "target": scan.get('target', 'Unknown'),
+                "type": scan_type,
+                "status": scan.get('status', 'unknown'),
+                "started_at": started_at,
+                "duration": duration,
+                "results_summary": results_summary
+            })
+        
+        return {"scans": formatted_scans}
+        
+    except Exception as e:
+        web_logger.error(f"Failed to get recent scans: {e}")
+        return {"scans": []}
+
+
+@app.get("/api/tools/status")
+async def get_tools_status():
+    """Get status of all penetration testing tools"""
+    try:
+        tool_status = ToolValidator.check_all_tools()
+        return {"tools": tool_status}
+    except Exception as e:
+        web_logger.error(f"Failed to get tools status: {e}")
+        return {"tools": {}}
+
+
+@app.get("/api/scans/{scan_id}/download")
+async def download_scan_results(scan_id: str):
+    """Download scan results"""
+    try:
+        scan = db.get_scan(scan_id)
+        if not scan:
+            raise HTTPException(status_code=404, detail="Scan not found")
+        
+        # Generate report
+        report_generator = ReportGenerator()
+        report_content = report_generator.generate_json_report(scan)
+        
+        # Create response
+        response = Response(
+            content=json.dumps(report_content, indent=2),
+            media_type="application/json",
+            headers={
+                "Content-Disposition": f"attachment; filename=reconforge_scan_{scan_id}.json"
+            }
+        )
+        
+        return response
+        
+    except Exception as e:
+        web_logger.error(f"Failed to download scan results: {e}")
+        raise HTTPException(status_code=500, detail="Failed to download results")
+
+
 @app.get("/discover", response_class=HTMLResponse)
 async def discover_page(request: Request):
     """Subdomain discovery page"""

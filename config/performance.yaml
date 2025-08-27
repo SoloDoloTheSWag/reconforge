@@ -1,0 +1,159 @@
+# ReconForge Performance Configuration
+
+# Resource Monitoring
+resource_monitoring:
+  enabled: true
+  interval_seconds: 30
+  max_cpu_percent: 80.0
+  max_memory_percent: 85.0
+  alert_thresholds:
+    cpu_critical: 95.0
+    memory_critical: 95.0
+    disk_usage_critical: 90.0
+
+# Caching Configuration  
+caching:
+  enabled: true
+  max_cache_size: 10000
+  default_ttl_seconds: 3600
+  cleanup_interval_seconds: 300
+  cache_types:
+    dns_resolution: 
+      ttl: 1800  # 30 minutes
+      max_size: 5000
+    subdomain_validation:
+      ttl: 3600  # 1 hour
+      max_size: 2000
+    vulnerability_templates:
+      ttl: 7200  # 2 hours
+      max_size: 1000
+
+# Concurrency Control
+concurrency:
+  max_concurrent_scans: 5
+  max_concurrent_sources: 10
+  max_concurrent_requests: 50
+  thread_pool_size: 32
+  process_pool_size: 8
+  
+  # Per-module limits
+  module_limits:
+    subdomain_discovery: 20
+    vulnerability_scanning: 10
+    penetration_testing: 5
+
+# Rate Limiting
+rate_limiting:
+  enabled: true
+  strategy: "sliding_window"  # or "token_bucket"
+  
+  # Global rate limits
+  global:
+    requests_per_minute: 1000
+    requests_per_hour: 50000
+  
+  # Per-source rate limits
+  sources:
+    passive_dns: 100  # per minute
+    certificate_transparency: 200
+    search_engines: 50
+    
+  # Per-scanner rate limits  
+  scanners:
+    nuclei: 150  # requests per second
+    nikto: 50
+    custom_scanners: 100
+
+# Memory Management
+memory:
+  max_memory_usage_mb: 2048
+  garbage_collection_threshold: 0.8
+  large_result_streaming: true
+  result_pagination_size: 100
+  
+  # Memory limits per component
+  component_limits:
+    dns_cache: 256
+    vulnerability_results: 512
+    subdomain_results: 256
+    scan_history: 512
+
+# Disk I/O Optimization
+disk_io:
+  use_temporary_files: true
+  temp_directory: "/tmp/reconforge"
+  max_temp_file_size_mb: 100
+  cleanup_temp_files: true
+  compression_enabled: true
+  async_file_operations: true
+
+# Network Optimization
+network:
+  connection_pool_size: 100
+  connection_timeout_seconds: 10
+  read_timeout_seconds: 30
+  max_retries: 3
+  retry_backoff_factor: 1.5
+  keep_alive: true
+  tcp_nodelay: true
+
+# Database Performance
+database:
+  connection_pool_size: 10
+  query_timeout_seconds: 30
+  batch_insert_size: 1000
+  index_optimization: true
+  vacuum_interval_hours: 24
+  backup_compression: true
+
+# Logging Performance
+logging:
+  async_logging: true
+  buffer_size: 10000
+  flush_interval_seconds: 5
+  log_rotation_size_mb: 100
+  max_log_files: 10
+  compression_enabled: true
+
+# Task Queue Configuration
+task_queue:
+  max_queue_size: 1000
+  worker_threads: 8
+  task_timeout_seconds: 3600
+  priority_levels: 5
+  retry_failed_tasks: true
+  max_retries: 3
+
+# Performance Profiling
+profiling:
+  enabled: false  # Enable only for debugging
+  profile_functions: true
+  profile_memory: true
+  profile_network: true
+  sample_rate: 0.1  # Profile 10% of requests
+  output_format: "json"
+
+# Auto-scaling Configuration
+auto_scaling:
+  enabled: true
+  cpu_scale_threshold: 70.0
+  memory_scale_threshold: 75.0
+  scale_up_factor: 1.5
+  scale_down_factor: 0.75
+  min_workers: 2
+  max_workers: 20
+  cooldown_seconds: 300
+
+# Health Checks
+health_checks:
+  enabled: true
+  interval_seconds: 60
+  timeout_seconds: 5
+  endpoints:
+    - name: "database"
+      check_type: "db_connection"
+    - name: "disk_space"
+      check_type: "disk_usage"
+      threshold: 90.0
+    - name: "external_dependencies"
+      check_type: "tool_availability"

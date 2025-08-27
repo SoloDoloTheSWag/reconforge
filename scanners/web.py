@@ -561,4 +561,28 @@ def get_web_scanners(config: Dict[str, Any] = None) -> List[WebScanner]:
         nikto_scanner.configure(config)
         scanners.append(nikto_scanner)
     
+    # Wapiti scanner
+    try:
+        from scanners.wapiti import get_wapiti_scanners
+        wapiti_scanners = get_wapiti_scanners(config)
+        scanners.extend(wapiti_scanners)
+    except ImportError:
+        pass
+    
+    # OWASP ZAP scanners
+    try:
+        from scanners.zap import get_zap_scanners
+        zap_scanners = get_zap_scanners(config)
+        scanners.extend(zap_scanners)
+    except ImportError:
+        pass
+    
+    # testssl scanner for SSL/TLS testing
+    try:
+        from scanners.testssl import get_testssl_scanners
+        testssl_scanners = get_testssl_scanners(config)
+        scanners.extend(testssl_scanners)
+    except ImportError:
+        pass
+    
     return scanners
