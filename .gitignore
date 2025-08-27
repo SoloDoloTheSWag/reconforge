@@ -43,11 +43,13 @@ logs/
 *.log
 *.log.*
 
-# Database files
+# Database files - Contains actual scan results and reconnaissance data
 data/
 *.db
 *.sqlite
 *.sqlite3
+*.db-wal
+*.db-shm
 
 # Temporary and cache files
 .cache/
@@ -59,12 +61,12 @@ htmlcov/
 *.cover
 .hypothesis/
 
-# Output and export directories
+# Output and export directories - Contains actual reconnaissance data
 exports/
 output/
 results/
 reports/
-# Exclude specific output files but keep essential project files
+# Exclude specific output files containing actual scan data
 config.json
 scan_*.json
 pentest_*.json
@@ -72,6 +74,12 @@ recon_*.json
 scan_*.csv
 scan_*.html
 scan_*.txt
+*.txt
+subdomain_*.txt
+vulnerability_*.json
+exploit_*.json
+*_subdomains.txt
+*_subdomains_clean.txt
 
 # Configuration files with sensitive data
 config.json
@@ -98,10 +106,22 @@ nuclei-templates/
 wordlists/
 custom-templates/
 
-# Scan results and artifacts
+# Scan results and artifacts - Contains actual reconnaissance data
 scan_*
 pentest_*
 recon_*
+*_scan*
+*_pentest*
+*_recon*
+*_results*
+
+# Accidental output files
+-
+
+# Any files containing actual domain reconnaissance
+*winbornholding*
+*_domains*
+*_targets*
 
 # API keys and tokens
 .api_keys
