@@ -2,12 +2,27 @@
 
 All notable changes to the ReconForge penetration testing framework will be documented in this file.
 
+## [1.2.2] - 2025-08-27
+
+### Security - Critical GitHub Repository Cleanup
+#### 🚨 Emergency Security Resolution
+- **GitHub Repository Sanitization**: Successfully removed reconnaissance data from remote GitHub repository
+- **Critical Data Exposure Fixed**: Eliminated 529.6 KB file containing 22,761 actual reconnaissance results
+- **Forced History Rewrite**: Used git filter-branch and force push to permanently purge sensitive data
+- **Repository Verification**: Confirmed complete removal of all reconnaissance data from GitHub
+- **Multi-Machine Documentation**: Added comprehensive setup guide for secure multi-machine deployment
+
+### Updated
+- **SETUP_NEW_MACHINE.md**: Added detailed explanation of git clone vs git pull safety
+- **Documentation**: Updated all references to reflect final secure repository state
+- **Security Guidelines**: Enhanced warnings about reconnaissance data protection
+
 ## [1.2.1] - 2025-08-27
 
 ### Security
-#### 🔒 Data Protection & Privacy Enhancement
+#### 🔒 Data Protection & Privacy Enhancement  
 - **Enhanced .gitignore**: Comprehensive exclusions for all reconnaissance data types
-- **History Cleanup**: Removed any accidental reconnaissance data from git history using git filter-branch
+- **History Cleanup**: Removed any accidental reconnaissance data from local git history using git filter-branch
 - **Pattern Protection**: Added exclusion patterns for scan results, subdomain files, and target data
 - **Database Security**: All SQLite files and scan results properly excluded from version control
 - **Future Prevention**: Comprehensive patterns prevent accidental commits of sensitive reconnaissance data
