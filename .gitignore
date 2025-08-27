@@ -123,6 +123,9 @@ recon_*
 *_domains*
 *_targets*
 
+# Claude Code context file - keep this in git
+!CLAUDE.md
+
 # API keys and tokens
 .api_keys
 tokens.json
