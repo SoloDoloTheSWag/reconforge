@@ -12,10 +12,16 @@ if [[ ! -f "reconforge.py" ]]; then
     exit 1
 fi
 
-# Check if virtual environment exists
+# Check if virtual environment exists, create if needed
 if [[ ! -d "venv" ]]; then
-    echo "❌ Error: Virtual environment not found. Please run the installation first."
-    exit 1
+    echo "🔧 Virtual environment not found. Creating one..."
+    python3 -m venv venv
+    if [[ $? -ne 0 ]]; then
+        echo "❌ Error: Failed to create virtual environment. Please install python3-venv:"
+        echo "   sudo apt install python3-venv"
+        exit 1
+    fi
+    echo "✅ Virtual environment created successfully"
 fi
 
 # Activate virtual environment
@@ -34,13 +40,24 @@ fi
 echo "🐍 Python version: $(python --version)"
 echo "📦 Checking dependencies..."
 
+# Check if main dependencies are installed
 if ! python -c "import fastapi, uvicorn, jinja2" 2>/dev/null; then
-    echo "❌ Error: Missing dependencies. Please install requirements:"
-    echo "   pip install -r requirements.txt"
-    exit 1
+    echo "🔧 Installing dependencies..."
+    if [[ -f "requirements.txt" ]]; then
+        pip install -r requirements.txt
+        if [[ $? -ne 0 ]]; then
+            echo "❌ Error: Failed to install dependencies"
+            echo "   Please manually run: pip install -r requirements.txt"
+            exit 1
+        fi
+        echo "✅ Dependencies installed successfully"
+    else
+        echo "❌ Error: requirements.txt not found"
+        exit 1
+    fi
+else
+    echo "✅ All dependencies found"
 fi
-
-echo "✅ All dependencies found"
 echo ""
 echo "🌐 Starting ReconForge Web Interface..."
 echo "📡 URL: http://localhost:8000"
