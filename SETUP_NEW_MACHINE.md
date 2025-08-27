@@ -76,6 +76,12 @@ sudo apt install -y nmap sqlmap gobuster nikto hydra
 
 ## ⚠️ Important Notes
 
+**Git & Data Safety:**
+- **Git Clone (New Machine)**: Downloads only framework code - NO reconnaissance data
+- **Git Pull (Existing Machine)**: Updates only framework - your recon data stays safe
+- **Your scan results NEVER get overwritten** - data/, logs/, exports/ are .gitignored
+- Each machine keeps its own reconnaissance data independently
+
 **Security:**
 - **Never commit reconnaissance data** - all scan results stay local
 - Check `.gitignore` patterns before any commits
