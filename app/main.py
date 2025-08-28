@@ -73,7 +73,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 app = FastAPI(
     title="ReconForge",
     description="Professional Reconnaissance and Penetration Testing Framework",
-    version="1.3.0"
+    version="1.3.1"
 )
 
 # Add security middleware

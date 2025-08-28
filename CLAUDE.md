@@ -6,7 +6,7 @@
 
 **ReconForge** is a professional penetration testing framework combining reconnaissance, vulnerability scanning, and penetration testing in a unified platform.
 
-**Current Version**: v1.3.0
+**Current Version**: v1.3.1
 **Primary Language**: Python 3.8+
 **Framework Type**: Web-based (FastAPI) + CLI
 **License**: MIT
@@ -249,6 +249,14 @@ CREATE TABLE vulnerabilities (
 4. **Check exports/ and data/ directories** for sensitive data before changes
 5. **🔥 CRITICAL: Repository was cleaned with git filter-branch and force push** - reconnaissance data completely removed from GitHub
 
+### 📋 Logging & Testing Guidelines (Added v1.3.1)
+1. **ALWAYS check logs before starting work** - `logs/terminal_test.log` contains recent testing results
+2. **Clean old logs after reviewing** - Don't let old issues confuse future debugging
+3. **Document ALL major fixes** - Update CLAUDE.md, CHANGELOG.md, and commit messages
+4. **Test fixes thoroughly** - Use analyze_logs.py to verify no errors remain
+5. **Log analysis workflow**: Review → Fix → Test → Clean → Document → Commit
+6. **Never ignore testing feedback** - User testing reveals critical issues that need immediate fixing
+
 ### Framework Understanding
 1. **This is a DEFENSIVE security tool** - for authorized testing only
 2. **All modules have safety features** - rate limiting, check modes, timeouts
@@ -362,7 +370,9 @@ CREATE TABLE vulnerabilities (
 4. ✅ Test critical functionality
 
 ### Version History
-- **v1.2.2** (Current): Final release - Complete framework documentation & analysis
+- **v1.3.1** (Current): STABLE - All terminal interface issues fixed and tested
+- **v1.3.0**: Interactive Terminal Interface - Major terminal-first redesign
+- **v1.2.2**: Final release - Complete framework documentation & analysis
 - **v1.2.1**: GitHub repository cleanup - reconnaissance data completely removed  
 - **v1.2.0**: Enhanced security and data protection
 - **v1.1.0**: Metasploit integration and UI redesign

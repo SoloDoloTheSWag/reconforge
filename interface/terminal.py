@@ -95,7 +95,7 @@ class ReconForgeTerminal:
             terminal_logger.addHandler(file_handler)
         
         terminal_logger.info("=== TERMINAL INTERFACE SESSION STARTED ===")
-        terminal_logger.info(f"ReconForge v1.3.0 Terminal Interface Initialized")
+        terminal_logger.info(f"ReconForge v1.3.1 Terminal Interface Initialized")
         terminal_logger.info(f"Session ID: {datetime.now().strftime('%Y%m%d_%H%M%S')}")
         
         return terminal_logger
@@ -162,7 +162,7 @@ class ReconForgeTerminal:
         """Print ReconForge banner"""
         banner = """
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║                           ReconForge v1.3.0                                 ║
+║                           ReconForge v1.3.1                                 ║
 ║              Professional Reconnaissance & Penetration Testing              ║
 ║                        Interactive Terminal Interface                        ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
