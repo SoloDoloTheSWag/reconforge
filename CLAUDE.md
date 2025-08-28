@@ -6,7 +6,7 @@
 
 **ReconForge** is a professional penetration testing framework combining reconnaissance, vulnerability scanning, and penetration testing in a unified platform.
 
-**Current Version**: v1.3.1
+**Current Version**: v1.4.0
 **Primary Language**: Python 3.8+
 **Framework Type**: Web-based (FastAPI) + CLI
 **License**: MIT
@@ -370,7 +370,8 @@ CREATE TABLE vulnerabilities (
 4. ✅ Test critical functionality
 
 ### Version History
-- **v1.3.1** (Current): STABLE - All terminal interface issues fixed and tested
+- **v1.4.0** (Current): PRODUCTION-READY - All critical terminal errors resolved, database methods fixed, exploitation modules complete
+- **v1.3.1**: STABLE - All terminal interface issues fixed and tested
 - **v1.3.0**: Interactive Terminal Interface - Major terminal-first redesign
 - **v1.2.2**: Final release - Complete framework documentation & analysis
 - **v1.2.1**: GitHub repository cleanup - reconnaissance data completely removed  

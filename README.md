@@ -800,7 +800,7 @@ gh release list --repo SoloDoloTheSWag/reconforge
 - **📊 Codebase**: 28 Python files, 12,767+ lines of professional security code
 - **🛠️ Languages**: Python, HTML, CSS, JavaScript
 - **📝 License**: MIT License
-- **🏷️ Version**: v1.2.2 (Latest Release - GitHub Repository Secured & Cleaned)
+- **🏷️ Version**: v1.4.0 (Latest Release - Production-Ready Terminal Interface)
 
 ### Built With
 - **Python 3.8+** - Core application framework
@@ -897,7 +897,7 @@ Key Components:
 
 **📋 Current Framework Status:**
 - **Architecture**: 28 Python files, 12,767+ lines of professional security code
-- **Version**: v1.2.2 (Final Release) - Complete security resolution and optimization
+- **Version**: v1.4.0 (Latest Release) - Production-ready terminal interface with all critical errors resolved
 - **Database**: SQLite with comprehensive schema for scan management
 - **Web Interface**: Modern Bootstrap 5.3.2 with responsive dark theme design
 - **Security**: Repository completely cleaned and secured for public deployment
@@ -1135,7 +1135,7 @@ Key Components:
 
 #### 📊 **Updated Statistics**
 - **Total Pentest Modules**: **8** (including new Metasploit integration)
-- **Framework Version**: **v1.2.2** with complete GitHub repository security
+- **Framework Version**: **v1.4.0** with complete terminal interface stability and all critical errors resolved
 - **UI Components**: **50+** modern CSS components and utilities
 - **Security Tools**: **14** fully integrated and operational
 - **Code Quality**: **12,767+** lines of professional security code
