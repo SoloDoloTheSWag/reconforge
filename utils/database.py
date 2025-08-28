@@ -500,11 +500,7 @@ class ReconForgeDB:
     
     def complete_scan(self, scan_id: int, result_count: int = 0, scan_type: str = None):
         """Mark a scan as completed with results"""
-        updates = {
-            'status': 'completed',
-            'end_time': datetime.now(),
-            'duration': 0  # Will be calculated from start/end times
-        }
+        updates = {}
         
         # Update specific result counts based on scan type
         if scan_type == 'subdomain_discovery':
@@ -514,19 +510,16 @@ class ReconForgeDB:
         elif scan_type == 'port_scan':
             updates['total_services'] = result_count
         
-        self.update_scan(scan_id, **updates)
+        self.update_scan_status(scan_id, 'completed', **updates)
     
     def fail_scan(self, scan_id: int, error_message: str = None):
         """Mark a scan as failed with optional error message"""
-        updates = {
-            'status': 'failed',
-            'end_time': datetime.now()
-        }
+        updates = {}
         
         if error_message:
             updates['notes'] = error_message
             
-        self.update_scan(scan_id, **updates)
+        self.update_scan_status(scan_id, 'failed', **updates)
     
     def add_vulnerability_simple(self, scan_id: int, target: str, vulnerability_type: str, 
                                 severity: str, title: str, description: str = "", url: str = ""):

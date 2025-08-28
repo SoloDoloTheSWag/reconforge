@@ -30,6 +30,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from utils.database import ReconForgeDB
 from utils.logging import setup_logging, get_scan_logger, main_logger
+import logging
 from utils.helpers import ToolValidator, DomainValidator, ConfigManager, ReportGenerator
 from sources.base import SourceManager
 from sources.passive import get_passive_sources
@@ -50,6 +51,9 @@ class ReconForgeTerminal:
         self.current_session = {}
         self.navigation_stack = []
         
+        # Setup terminal-specific logging
+        self.terminal_logger = self.setup_terminal_logging()
+        
         # Initialize managers
         self.source_manager = SourceManager()
         self.scanner_manager = ScannerManager()
@@ -63,6 +67,38 @@ class ReconForgeTerminal:
         # Terminal state
         self.running = True
         self.current_target = None
+    
+    def setup_terminal_logging(self):
+        """Setup comprehensive logging for terminal interface"""
+        # Create terminal-specific logger
+        terminal_logger = logging.getLogger('terminal_interface')
+        terminal_logger.setLevel(logging.DEBUG)
+        
+        # Ensure logs directory exists
+        log_dir = Path('logs')
+        log_dir.mkdir(exist_ok=True)
+        
+        # Create file handler for terminal test log
+        log_file = log_dir / 'terminal_test.log'
+        file_handler = logging.FileHandler(log_file)
+        file_handler.setLevel(logging.DEBUG)
+        
+        # Create detailed formatter
+        formatter = logging.Formatter(
+            '%(asctime)s | %(levelname)-8s | %(funcName)-20s | %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S'
+        )
+        file_handler.setFormatter(formatter)
+        
+        # Add handler to logger
+        if not terminal_logger.handlers:
+            terminal_logger.addHandler(file_handler)
+        
+        terminal_logger.info("=== TERMINAL INTERFACE SESSION STARTED ===")
+        terminal_logger.info(f"ReconForge v1.3.0 Terminal Interface Initialized")
+        terminal_logger.info(f"Session ID: {datetime.now().strftime('%Y%m%d_%H%M%S')}")
+        
+        return terminal_logger
         
     def load_config(self):
         """Load configuration from file"""
@@ -203,7 +239,17 @@ class ReconForgeTerminal:
     
     def get_user_choice(self, prompt_text: str = "Select an option") -> str:
         """Get user input with validation"""
-        return Prompt.ask(f"[bold green]{prompt_text}[/bold green]", default="0")
+        try:
+            self.terminal_logger.debug(f"Prompting user: {prompt_text}")
+            choice = Prompt.ask(f"[bold green]{prompt_text}[/bold green]", default="0")
+            self.terminal_logger.info(f"User selected: '{choice}' for prompt: {prompt_text}")
+            return choice
+        except (KeyboardInterrupt, EOFError) as e:
+            self.terminal_logger.warning(f"User input interrupted: {type(e).__name__}")
+            return "0"
+        except Exception as e:
+            self.terminal_logger.error(f"Error getting user input: {str(e)}")
+            return "0"
     
     async def handle_subdomain_discovery(self):
         """Handle subdomain discovery menu and operations"""
@@ -272,61 +318,75 @@ class ReconForgeTerminal:
     
     async def run_full_discovery(self):
         """Run full subdomain discovery"""
-        target = self.get_target_input()
-        if not target:
-            return
-        
-        self.current_target = target
-        
-        # Create scan in database
-        scan_id = self.db.create_scan(target, 'subdomain_discovery', {
-            'discovery_type': 'full',
-            'passive_sources': True,
-            'active_sources': True
-        })
-        
-        self.console.print(f"[green]Starting full subdomain discovery for: {target}[/green]")
-        
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
-            TaskProgressColumn(),
-            console=self.console
-        ) as progress:
+        try:
+            self.terminal_logger.info("Starting full subdomain discovery")
+            target = self.get_target_input()
+            if not target:
+                self.terminal_logger.warning("No target provided for discovery")
+                return
             
-            task = progress.add_task("Discovering subdomains...", total=100)
+            self.current_target = target
+            self.terminal_logger.info(f"Target set to: {target}")
             
-            try:
-                # Run discovery
-                results = await self.source_manager.discover_all(
-                    target,
-                    sources=None,  # Use all sources
-                    parallel=True
-                )
+            # Create scan in database
+            scan_id = self.db.create_scan(target, 'subdomain_discovery', {
+                'discovery_type': 'full',
+                'passive_sources': True,
+                'active_sources': True
+            })
+            self.terminal_logger.info(f"Created scan in database with ID: {scan_id}")
+            
+            self.console.print(f"[green]Starting full subdomain discovery for: {target}[/green]")
+            
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                TaskProgressColumn(),
+                console=self.console
+            ) as progress:
                 
-                # Store results in database
-                for result in results:
-                    self.db.add_subdomain(
-                        scan_id=scan_id,
-                        subdomain=result.subdomain,
-                        ip_address=result.ip_address,
-                        source=result.source
+                task = progress.add_task("Discovering subdomains...", total=100)
+                
+                try:
+                    self.terminal_logger.info("Running discovery with all sources")
+                    # Run discovery
+                    results = await self.source_manager.discover_all(
+                        target,
+                        sources=None,  # Use all sources
+                        parallel=True
                     )
+                    
+                    self.terminal_logger.info(f"Discovery completed. Found {len(results)} results")
+                    
+                    # Store results in database
+                    for result in results:
+                        self.db.add_subdomain(
+                            scan_id=scan_id,
+                            subdomain=result.subdomain,
+                            ip_address=result.ip_address,
+                            source=result.source
+                        )
+                    
+                    progress.update(task, completed=100)
+                    
+                    # Complete scan
+                    self.db.complete_scan(scan_id, len(results), 'subdomain_discovery')
+                    self.terminal_logger.info(f"Scan {scan_id} marked as completed")
+                    
+                    # Display results
+                    self.display_discovery_results(results, target)
+                    
+                except Exception as e:
+                    self.terminal_logger.error(f"Discovery scan failed: {str(e)}", exc_info=True)
+                    self.console.print(f"[red]Discovery failed: {str(e)}[/red]")
+                    self.db.fail_scan(scan_id, str(e))
+                    self.terminal_logger.info(f"Scan {scan_id} marked as failed")
                 
-                progress.update(task, completed=100)
+                input("Press Enter to continue...")
                 
-                # Complete scan
-                self.db.complete_scan(scan_id, len(results), 'subdomain_discovery')
-                
-                # Display results
-                self.display_discovery_results(results, target)
-                
-            except Exception as e:
-                self.console.print(f"[red]Discovery failed: {str(e)}[/red]")
-                self.db.fail_scan(scan_id, str(e))
-            
-            input("Press Enter to continue...")
+        except Exception as e:
+            self.terminal_logger.error(f"Error in run_full_discovery: {str(e)}", exc_info=True)
     
     async def run_passive_discovery(self):
         """Run passive-only subdomain discovery"""
@@ -483,18 +543,31 @@ class ReconForgeTerminal:
     
     def get_target_input(self) -> Optional[str]:
         """Get and validate target domain input"""
-        target = Prompt.ask("[bold green]Enter target domain[/bold green]")
-        
-        if not target:
-            self.console.print("[red]No target specified.[/red]")
+        try:
+            self.terminal_logger.debug("Requesting target domain input from user")
+            target = Prompt.ask("[bold green]Enter target domain[/bold green]")
+            
+            if not target:
+                self.terminal_logger.warning("No target domain specified by user")
+                self.console.print("[red]No target specified.[/red]")
+                return None
+            
+            self.terminal_logger.info(f"User entered target: {target}")
+            
+            # Validate domain
+            if not DomainValidator.is_valid_domain(target):
+                self.terminal_logger.warning(f"Invalid domain format entered: {target}")
+                self.console.print(f"[red]Invalid domain format: {target}[/red]")
+                return None
+            
+            normalized_target = DomainValidator.normalize_domain(target)
+            self.terminal_logger.info(f"Target validated and normalized to: {normalized_target}")
+            return normalized_target
+            
+        except Exception as e:
+            self.terminal_logger.error(f"Error getting target input: {str(e)}", exc_info=True)
+            self.console.print(f"[red]Error getting target input: {str(e)}[/red]")
             return None
-        
-        # Validate domain
-        if not DomainValidator.is_valid_domain(target):
-            self.console.print(f"[red]Invalid domain format: {target}[/red]")
-            return None
-        
-        return DomainValidator.normalize_domain(target)
     
     def view_recent_discoveries(self):
         """View recent discovery scans"""
@@ -699,41 +772,74 @@ class ReconForgeTerminal:
     
     async def run(self):
         """Main terminal interface loop"""
-        # Setup logging
-        setup_logging(self.config.get('log_level', 'INFO'), 'logs/reconforge.log')
-        
-        while self.running:
-            self.print_main_menu()
+        try:
+            # Setup logging
+            setup_logging(self.config.get('log_level', 'INFO'), 'logs/reconforge.log')
+            self.terminal_logger.info("Starting main terminal interface loop")
             
-            choice = self.get_user_choice("Select an option")
-            
-            if choice == "1":
-                await self.handle_subdomain_discovery()
-            elif choice == "2":
-                await self.handle_vulnerability_scanning()
-            elif choice == "3":
-                await self.handle_port_scanning()
-            elif choice == "4":
-                await self.handle_directory_enumeration()
-            elif choice == "5":
-                await self.handle_sql_injection()
-            elif choice == "6":
-                await self.handle_exploitation_toolkit()
-            elif choice == "7":
-                await self.handle_report_generation()
-            elif choice == "8":
-                await self.handle_scan_history()
-            elif choice == "9":
-                await self.launch_web_dashboard()
-            elif choice == "10":
-                await self.handle_tool_configuration()
-            elif choice == "0":
-                if Confirm.ask("[bold red]Are you sure you want to exit ReconForge?[/bold red]"):
-                    self.console.print("[green]Thanks for using ReconForge! 🚀[/green]")
-                    self.running = False
-            else:
-                self.console.print("[red]Invalid option. Please try again.[/red]")
-                input("Press Enter to continue...")
+            while self.running:
+                try:
+                    self.terminal_logger.debug("Displaying main menu")
+                    self.print_main_menu()
+                    
+                    choice = self.get_user_choice("Select an option")
+                    
+                    self.terminal_logger.info(f"Processing main menu choice: {choice}")
+                    
+                    if choice == "1":
+                        self.terminal_logger.info("Entering subdomain discovery module")
+                        await self.handle_subdomain_discovery()
+                    elif choice == "2":
+                        self.terminal_logger.info("Entering vulnerability scanning module")
+                        await self.handle_vulnerability_scanning()
+                    elif choice == "3":
+                        self.terminal_logger.info("Entering port scanning module")
+                        await self.handle_port_scanning()
+                    elif choice == "4":
+                        self.terminal_logger.info("Entering directory enumeration module")
+                        await self.handle_directory_enumeration()
+                    elif choice == "5":
+                        self.terminal_logger.info("Entering SQL injection testing module")
+                        await self.handle_sql_injection()
+                    elif choice == "6":
+                        self.terminal_logger.info("Entering exploitation toolkit module")
+                        await self.handle_exploitation_toolkit()
+                    elif choice == "7":
+                        self.terminal_logger.info("Entering report generation module")
+                        await self.handle_report_generation()
+                    elif choice == "8":
+                        self.terminal_logger.info("Entering scan history module")
+                        await self.handle_scan_history()
+                    elif choice == "9":
+                        self.terminal_logger.info("Launching web dashboard")
+                        await self.launch_web_dashboard()
+                    elif choice == "10":
+                        self.terminal_logger.info("Entering tool configuration module")
+                        await self.handle_tool_configuration()
+                    elif choice == "0":
+                        self.terminal_logger.info("User requested exit")
+                        if Confirm.ask("[bold red]Are you sure you want to exit ReconForge?[/bold red]"):
+                            self.terminal_logger.info("User confirmed exit")
+                            self.console.print("[green]Thanks for using ReconForge! 🚀[/green]")
+                            self.running = False
+                        else:
+                            self.terminal_logger.info("User cancelled exit")
+                    else:
+                        self.terminal_logger.warning(f"Invalid menu option selected: {choice}")
+                        self.console.print("[red]Invalid option. Please try again.[/red]")
+                        input("Press Enter to continue...")
+                        
+                except Exception as e:
+                    self.terminal_logger.error(f"Error in main menu loop: {str(e)}", exc_info=True)
+                    self.console.print(f"[red]An error occurred: {str(e)}[/red]")
+                    input("Press Enter to continue...")
+                    
+        except Exception as e:
+            self.terminal_logger.critical(f"Critical error in terminal interface: {str(e)}", exc_info=True)
+            self.console.print(f"[red]Critical error: {str(e)}[/red]")
+        finally:
+            self.terminal_logger.info("=== TERMINAL INTERFACE SESSION ENDED ===")
+            self.terminal_logger.info(f"Session duration: Started at initialization")
     
     async def handle_vulnerability_scanning(self):
         """Handle vulnerability scanning menu and operations"""
@@ -839,10 +945,7 @@ class ReconForgeTerminal:
                     return
                 
                 # Run scan
-                results = await nuclei_scanner.scan([target], {
-                    'severity': ['critical', 'high', 'medium'],
-                    'timeout': 30
-                })
+                results = await nuclei_scanner.scan([target], severity=['critical', 'high', 'medium'], timeout=30)
                 
                 # Store results in database
                 for result in results:
@@ -981,6 +1084,36 @@ class ReconForgeTerminal:
         except Exception as e:
             self.console.print(f"[red]Error fetching scan history: {str(e)}[/red]")
         
+        input("Press Enter to continue...")
+    
+    async def run_comprehensive_scan(self):
+        """Run comprehensive vulnerability scan using multiple scanners"""
+        self.console.print("[yellow]Comprehensive Vulnerability Scanning - Coming soon![/yellow]")
+        self.console.print("[dim]This will use multiple scanners: Nuclei, Nikto, Wapiti, and ZAP[/dim]")
+        input("Press Enter to continue...")
+    
+    async def run_custom_scanner_selection(self):
+        """Run custom scanner selection"""
+        self.console.print("[yellow]Custom Scanner Selection - Coming soon![/yellow]")
+        self.console.print("[dim]This will allow you to select specific scanners[/dim]")
+        input("Press Enter to continue...")
+    
+    async def run_ssl_scan(self):
+        """Run SSL/TLS security testing"""
+        self.console.print("[yellow]SSL/TLS Security Testing - Coming soon![/yellow]")
+        self.console.print("[dim]This will use TestSSL for certificate and TLS configuration testing[/dim]")
+        input("Press Enter to continue...")
+    
+    async def run_web_app_scan(self):
+        """Run web application scanning"""
+        self.console.print("[yellow]Web Application Scanning - Coming soon![/yellow]")
+        self.console.print("[dim]This will use specialized web app scanners like Wapiti and Nikto[/dim]")
+        input("Press Enter to continue...")
+    
+    async def export_vulnerability_results(self):
+        """Export vulnerability scan results"""
+        self.console.print("[yellow]Vulnerability Results Export - Coming soon![/yellow]")
+        self.console.print("[dim]This will allow exporting vulnerability scan results in multiple formats[/dim]")
         input("Press Enter to continue...")
     
     async def handle_port_scanning(self):
