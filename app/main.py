@@ -31,6 +31,8 @@ sys.path.append(str(Path(__file__).parent.parent))
 from utils.database import ReconForgeDB
 from utils.logging import web_logger, get_scan_logger
 from utils.helpers import DomainValidator, ToolValidator, ReportGenerator
+from utils.analytics import analytics
+from utils.report_templates import report_templates
 from sources.base import SourceManager
 from sources.passive import get_passive_sources
 from sources.active import get_active_sources
@@ -1465,6 +1467,506 @@ async def cancel_installation():
     """Cancel tool installation"""
     # This would need actual implementation
     return {"success": True, "message": "Installation cancelled"}
+
+
+# Analytics Dashboard Routes
+
+@app.get("/analytics", response_class=HTMLResponse)
+async def analytics_dashboard(request: Request):
+    """Analytics dashboard page"""
+    return templates.TemplateResponse("analytics_dashboard.html", {
+        "request": request,
+        "page_title": "Security Analytics"
+    })
+
+
+@app.get("/api/analytics/dashboard")
+async def get_analytics_dashboard_data():
+    """Get comprehensive analytics dashboard data"""
+    try:
+        return {
+            "metrics": analytics.get_dashboard_metrics(),
+            "vulnerability_trends": analytics.get_vulnerability_trends(),
+            "scan_volume": analytics.get_scan_volume_trends(),
+            "threat_distribution": analytics.get_threat_distribution(),
+            "compliance_scores": analytics.get_compliance_scores(),
+            "executive_summary": analytics.get_executive_summary(),
+            "recent_activities": analytics.get_recent_activities()
+        }
+    except Exception as e:
+        web_logger.error(f"Error getting analytics dashboard data: {e}")
+        raise HTTPException(status_code=500, detail="Failed to load analytics data")
+
+
+@app.get("/api/analytics/metrics")
+async def get_analytics_metrics():
+    """Get current dashboard metrics"""
+    try:
+        return analytics.get_dashboard_metrics()
+    except Exception as e:
+        web_logger.error(f"Error getting analytics metrics: {e}")
+        raise HTTPException(status_code=500, detail="Failed to load metrics")
+
+
+@app.get("/api/analytics/trends")
+async def get_vulnerability_trends(days: int = 30):
+    """Get vulnerability trends over specified days"""
+    try:
+        return analytics.get_vulnerability_trends(days)
+    except Exception as e:
+        web_logger.error(f"Error getting vulnerability trends: {e}")
+        raise HTTPException(status_code=500, detail="Failed to load trends")
+
+
+@app.get("/api/analytics/scan-volume")
+async def get_scan_volume(days: int = 30):
+    """Get scan volume trends"""
+    try:
+        return analytics.get_scan_volume_trends(days)
+    except Exception as e:
+        web_logger.error(f"Error getting scan volume: {e}")
+        raise HTTPException(status_code=500, detail="Failed to load scan volume")
+
+
+@app.get("/api/analytics/threats")
+async def get_threat_distribution():
+    """Get threat type distribution"""
+    try:
+        return analytics.get_threat_distribution()
+    except Exception as e:
+        web_logger.error(f"Error getting threat distribution: {e}")
+        raise HTTPException(status_code=500, detail="Failed to load threat data")
+
+
+@app.get("/api/analytics/compliance")
+async def get_compliance_scores():
+    """Get security compliance scores"""
+    try:
+        return analytics.get_compliance_scores()
+    except Exception as e:
+        web_logger.error(f"Error getting compliance scores: {e}")
+        raise HTTPException(status_code=500, detail="Failed to load compliance data")
+
+
+@app.get("/api/analytics/export")
+async def export_analytics_data(format: str = "json", days: int = 30):
+    """Export analytics data in various formats"""
+    try:
+        data = analytics.export_analytics_data(format, days)
+        
+        if format.lower() == "json":
+            return JSONResponse(content=data, headers={
+                "Content-Disposition": f"attachment; filename=analytics_report_{datetime.now().strftime('%Y%m%d')}.json"
+            })
+        elif format.lower() == "csv":
+            # Convert to CSV format
+            try:
+                import pandas as pd
+            except ImportError:
+                # Fallback CSV generation without pandas
+                pass
+            import io
+            
+            # Create CSV data
+            output = io.StringIO()
+            
+            # Write summary
+            output.write("# Analytics Summary Report\n")
+            output.write(f"# Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            output.write(f"# Date Range: {data['summary']['date_range']}\n")
+            output.write(f"# Total Scans: {data['summary']['total_scans']}\n")
+            output.write(f"# Total Vulnerabilities: {data['summary']['total_vulnerabilities']}\n")
+            output.write(f"# Risk Score: {data['summary']['risk_score']:.2f}\n\n")
+            
+            # Vulnerability data
+            if data.get('vulnerabilities'):
+                df_vulns = pd.DataFrame(data['vulnerabilities'])
+                output.write("## Vulnerabilities\n")
+                df_vulns.to_csv(output, index=False)
+                output.write("\n")
+            
+            # Scan data
+            if data.get('scans'):
+                df_scans = pd.DataFrame(data['scans'])
+                output.write("## Scans\n")
+                df_scans.to_csv(output, index=False)
+            
+            csv_content = output.getvalue()
+            output.close()
+            
+            return Response(
+                content=csv_content,
+                media_type="text/csv",
+                headers={
+                    "Content-Disposition": f"attachment; filename=analytics_report_{datetime.now().strftime('%Y%m%d')}.csv"
+                }
+            )
+        else:
+            raise HTTPException(status_code=400, detail="Unsupported export format")
+            
+    except Exception as e:
+        web_logger.error(f"Error exporting analytics data: {e}")
+        raise HTTPException(status_code=500, detail="Failed to export data")
+
+
+@app.get("/api/analytics/compare")
+async def compare_scans(scan_id1: str, scan_id2: str):
+    """Compare two scans for trend analysis"""
+    try:
+        # Get scan details from database
+        scan1 = db.get_scan_details(scan_id1)
+        scan2 = db.get_scan_details(scan_id2)
+        
+        if not scan1 or not scan2:
+            raise HTTPException(status_code=404, detail="One or both scans not found")
+        
+        # Calculate comparison metrics
+        comparison = {
+            "scan1": {
+                "id": scan_id1,
+                "target": scan1.get("target"),
+                "date": scan1.get("created_at"),
+                "vulnerabilities": len(scan1.get("vulnerabilities", [])),
+                "subdomains": len(scan1.get("subdomains", [])),
+                "severity_breakdown": {}
+            },
+            "scan2": {
+                "id": scan_id2,
+                "target": scan2.get("target"),
+                "date": scan2.get("created_at"),
+                "vulnerabilities": len(scan2.get("vulnerabilities", [])),
+                "subdomains": len(scan2.get("subdomains", [])),
+                "severity_breakdown": {}
+            },
+            "changes": {
+                "vulnerability_change": 0,
+                "subdomain_change": 0,
+                "new_vulnerabilities": [],
+                "resolved_vulnerabilities": [],
+                "new_severity_issues": {}
+            }
+        }
+        
+        # Calculate severity breakdowns
+        for scan_key, scan_data in [("scan1", scan1), ("scan2", scan2)]:
+            for vuln in scan_data.get("vulnerabilities", []):
+                severity = vuln.get("severity", "unknown")
+                comparison[scan_key]["severity_breakdown"][severity] = \
+                    comparison[scan_key]["severity_breakdown"].get(severity, 0) + 1
+        
+        # Calculate changes
+        comparison["changes"]["vulnerability_change"] = \
+            comparison["scan2"]["vulnerabilities"] - comparison["scan1"]["vulnerabilities"]
+        comparison["changes"]["subdomain_change"] = \
+            comparison["scan2"]["subdomains"] - comparison["scan1"]["subdomains"]
+        
+        return comparison
+        
+    except Exception as e:
+        web_logger.error(f"Error comparing scans: {e}")
+        raise HTTPException(status_code=500, detail="Failed to compare scans")
+
+
+# Executive Dashboard Routes
+
+@app.get("/executive", response_class=HTMLResponse)
+async def executive_dashboard(request: Request):
+    """Executive dashboard page"""
+    return templates.TemplateResponse("executive_dashboard.html", {
+        "request": request,
+        "page_title": "Executive Dashboard"
+    })
+
+
+@app.get("/api/executive/dashboard")
+async def get_executive_dashboard_data():
+    """Get executive dashboard data with business metrics"""
+    try:
+        # Get basic analytics
+        metrics = analytics.get_dashboard_metrics()
+        executive_summary = analytics.get_executive_summary()
+        
+        # Calculate business-focused metrics
+        all_scans = db.get_scans(limit=1000)
+        unique_targets = len(set(scan.get('target', '') for scan in all_scans))
+        
+        # Get vulnerability counts by severity
+        vulnerability_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
+        total_vulns = 0
+        
+        with db.get_connection() as conn:
+            severity_query = """
+            SELECT severity, COUNT(*) as count 
+            FROM vulnerabilities 
+            WHERE created_at >= datetime('now', '-30 days')
+            GROUP BY severity
+            """
+            results = conn.execute(severity_query).fetchall()
+            
+            for row in results:
+                severity = row['severity'].lower()
+                count = row['count']
+                if severity in vulnerability_counts:
+                    vulnerability_counts[severity] = count
+                    total_vulns += count
+        
+        # Calculate compliance score (simplified)
+        compliance_score = max(0, 100 - (vulnerability_counts['critical'] * 20) - 
+                              (vulnerability_counts['high'] * 10) - 
+                              (vulnerability_counts['medium'] * 5))
+        
+        # Generate business insights
+        insights = []
+        
+        if vulnerability_counts['critical'] > 0:
+            insights.append({
+                "type": "critical",
+                "title": "Critical Security Issues Detected",
+                "description": f"{vulnerability_counts['critical']} critical vulnerabilities require immediate executive attention and resource allocation."
+            })
+        
+        if compliance_score < 70:
+            insights.append({
+                "type": "warning",
+                "title": "Compliance Score Below Target",
+                "description": f"Current compliance score of {compliance_score}% is below the recommended 80% threshold."
+            })
+        
+        if total_vulns > 50:
+            insights.append({
+                "type": "warning",
+                "title": "High Vulnerability Volume",
+                "description": f"Current vulnerability count of {total_vulns} indicates need for enhanced security processes."
+            })
+        
+        if len(insights) == 0:
+            insights.append({
+                "type": "success",
+                "title": "Strong Security Posture",
+                "description": "Current security metrics indicate well-managed risk levels across the organization."
+            })
+        
+        # Generate action items
+        action_items = []
+        
+        if vulnerability_counts['critical'] > 0:
+            action_items.append({
+                "priority": "critical",
+                "title": "Address Critical Vulnerabilities",
+                "description": f"Immediately remediate {vulnerability_counts['critical']} critical security issues to prevent potential breaches."
+            })
+        
+        if vulnerability_counts['high'] > 5:
+            action_items.append({
+                "priority": "high", 
+                "title": "High-Priority Vulnerability Remediation",
+                "description": f"Develop remediation plan for {vulnerability_counts['high']} high-severity vulnerabilities."
+            })
+        
+        if compliance_score < 80:
+            action_items.append({
+                "priority": "medium",
+                "title": "Improve Compliance Posture",
+                "description": "Implement additional security controls to meet compliance requirements."
+            })
+        
+        return {
+            "security_score": {
+                "score": int(executive_summary['risk_score']),
+                "level": executive_summary['risk_level']
+            },
+            "metrics": {
+                "totalAssets": {
+                    "value": str(unique_targets),
+                    "trend": "stable"
+                },
+                "criticalIssues": {
+                    "value": str(vulnerability_counts['critical']),
+                    "trend": "up" if vulnerability_counts['critical'] > 0 else "stable"
+                },
+                "complianceScore": {
+                    "value": f"{compliance_score}%",
+                    "trend": "stable"
+                },
+                "securityInvestment": {
+                    "value": "ROI+",
+                    "trend": "up"
+                }
+            },
+            "risk_counts": vulnerability_counts,
+            "insights": insights,
+            "action_items": action_items
+        }
+        
+    except Exception as e:
+        web_logger.error(f"Error getting executive dashboard data: {e}")
+        raise HTTPException(status_code=500, detail="Failed to load executive data")
+
+
+@app.get("/api/executive/export")
+async def export_executive_report(format: str = "pdf"):
+    """Export executive report in various formats"""
+    try:
+        # Get executive data
+        dashboard_data = await get_executive_dashboard_data()
+        
+        # Prepare template data
+        template_data = {
+            "organization_name": "Organization Name",  # Could be configurable
+            "assessment_period": "Last 30 Days",
+            "generation_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "risk_score": dashboard_data["security_score"]["score"],
+            "risk_level": dashboard_data["security_score"]["level"],
+            "critical_count": dashboard_data["risk_counts"]["critical"],
+            "high_count": dashboard_data["risk_counts"]["high"], 
+            "medium_count": dashboard_data["risk_counts"]["medium"],
+            "total_scans": dashboard_data["metrics"]["totalAssets"]["value"],
+            "executive_summary": " ".join([insight["description"] for insight in dashboard_data["insights"]]),
+            "key_findings": [
+                {"priority": "high", "description": item["description"]} 
+                for item in dashboard_data["action_items"]
+            ],
+            "action_items": [
+                {
+                    "priority": item["priority"],
+                    "issue": item["title"],
+                    "impact": "High" if item["priority"] == "critical" else "Medium",
+                    "action": item["description"]
+                }
+                for item in dashboard_data["action_items"]
+            ]
+        }
+        
+        # Generate report
+        if format.lower() == "pdf":
+            report_content = report_templates.generate_report("executive_summary", template_data, "pdf")
+            if report_content:
+                import base64
+                pdf_data = base64.b64decode(report_content)
+                return Response(
+                    content=pdf_data,
+                    media_type="application/pdf",
+                    headers={
+                        "Content-Disposition": f"attachment; filename=executive_report_{datetime.now().strftime('%Y%m%d')}.pdf"
+                    }
+                )
+        else:
+            report_content = report_templates.generate_report("executive_summary", template_data, "html")
+            if report_content:
+                return Response(
+                    content=report_content,
+                    media_type="text/html",
+                    headers={
+                        "Content-Disposition": f"attachment; filename=executive_report_{datetime.now().strftime('%Y%m%d')}.html"
+                    }
+                )
+        
+        raise HTTPException(status_code=500, detail="Failed to generate report")
+        
+    except Exception as e:
+        web_logger.error(f"Error exporting executive report: {e}")
+        raise HTTPException(status_code=500, detail="Failed to export executive report")
+
+
+# Report Templates Routes
+
+@app.get("/api/reports/templates")
+async def list_report_templates():
+    """List all available report templates"""
+    try:
+        return {"templates": report_templates.list_templates()}
+    except Exception as e:
+        web_logger.error(f"Error listing templates: {e}")
+        raise HTTPException(status_code=500, detail="Failed to list templates")
+
+
+@app.get("/api/reports/templates/{template_id}")
+async def get_template_info(template_id: str):
+    """Get template information and preview"""
+    try:
+        template_info = report_templates.get_template_preview(template_id)
+        if not template_info:
+            raise HTTPException(status_code=404, detail="Template not found")
+        return template_info
+    except Exception as e:
+        web_logger.error(f"Error getting template info: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get template info")
+
+
+@app.post("/api/reports/generate")
+async def generate_custom_report(request: dict):
+    """Generate a custom report using specified template"""
+    try:
+        template_id = request.get("template_id")
+        output_format = request.get("format", "html")
+        scan_id = request.get("scan_id")
+        
+        if not template_id:
+            raise HTTPException(status_code=400, detail="Template ID required")
+        
+        # Get data for report generation
+        if scan_id:
+            # Generate report for specific scan
+            scan_data = db.get_scan_details(scan_id)
+            if not scan_data:
+                raise HTTPException(status_code=404, detail="Scan not found")
+            
+            template_data = {
+                "target": scan_data.get("target"),
+                "scan_id": scan_id,
+                "start_time": scan_data.get("start_time"),
+                "duration": scan_data.get("duration"),
+                "vulnerabilities": scan_data.get("vulnerabilities", []),
+                "subdomains": scan_data.get("subdomains", []),
+                "services": scan_data.get("services", []),
+                "pentests": scan_data.get("pentests", []),
+                "scanner_info": "ReconForge Security Scanner",
+                "version": "1.3.1",
+                "generation_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "vulnerability_count": len(scan_data.get("vulnerabilities", [])),
+                "subdomain_count": len(scan_data.get("subdomains", [])),
+                "total_issues": len(scan_data.get("vulnerabilities", [])),
+                "severity_counts": {
+                    "critical": len([v for v in scan_data.get("vulnerabilities", []) if v.get("severity") == "critical"]),
+                    "high": len([v for v in scan_data.get("vulnerabilities", []) if v.get("severity") == "high"]),
+                    "medium": len([v for v in scan_data.get("vulnerabilities", []) if v.get("severity") == "medium"]),
+                    "low": len([v for v in scan_data.get("vulnerabilities", []) if v.get("severity") == "low"])
+                },
+                "scope": [scan_data.get("target", "Unknown")]
+            }
+        else:
+            # Generate summary report
+            template_data = analytics.export_analytics_data("json", 30)
+        
+        # Generate report
+        report_content = report_templates.generate_report(template_id, template_data, output_format)
+        
+        if not report_content:
+            raise HTTPException(status_code=500, detail="Failed to generate report")
+        
+        # Determine content type and filename
+        if output_format.lower() == "pdf":
+            import base64
+            pdf_data = base64.b64decode(report_content)
+            return Response(
+                content=pdf_data,
+                media_type="application/pdf",
+                headers={
+                    "Content-Disposition": f"attachment; filename=report_{template_id}_{datetime.now().strftime('%Y%m%d')}.pdf"
+                }
+            )
+        else:
+            return Response(
+                content=report_content,
+                media_type="text/html",
+                headers={
+                    "Content-Disposition": f"attachment; filename=report_{template_id}_{datetime.now().strftime('%Y%m%d')}.html"
+                }
+            )
+            
+    except Exception as e:
+        web_logger.error(f"Error generating custom report: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate report")
 
 
 @app.on_event("startup")

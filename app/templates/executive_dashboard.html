@@ -1,0 +1,476 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<link href="/static/css/modern.css" rel="stylesheet">
+<style>
+/* Executive Dashboard Styles */
+.executive-dashboard {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: calc(100vh - 70px);
+    color: white;
+    padding: 2rem 0;
+}
+
+.executive-header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.executive-title {
+    font-size: 3rem;
+    font-weight: 300;
+    margin-bottom: 0.5rem;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+.executive-subtitle {
+    font-size: 1.2rem;
+    opacity: 0.9;
+    font-weight: 300;
+}
+
+.security-score {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    padding: 3rem;
+    text-align: center;
+    margin-bottom: 3rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.security-score::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 50%);
+    animation: pulse 4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 0.5; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1); }
+}
+
+.score-value {
+    font-size: 5rem;
+    font-weight: bold;
+    margin-bottom: 1rem;
+    text-shadow: 3px 3px 6px rgba(0,0,0,0.3);
+}
+
+.score-critical { color: #ff4757; }
+.score-high { color: #ff6b35; }
+.score-medium { color: #ffa502; }
+.score-low { color: #2ed573; }
+
+.score-label {
+    font-size: 1.5rem;
+    font-weight: 300;
+    opacity: 0.9;
+}
+
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    margin-bottom: 3rem;
+}
+
+.metric-card {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 15px;
+    padding: 2rem;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.metric-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.metric-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.8;
+}
+
+.metric-value {
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+.metric-label {
+    font-size: 1.1rem;
+    opacity: 0.9;
+    font-weight: 300;
+}
+
+.metric-trend {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    font-size: 1.2rem;
+}
+
+.trend-up { color: #ff4757; }
+.trend-down { color: #2ed573; }
+.trend-stable { color: #ffa502; }
+
+.business-insights {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 15px;
+    padding: 2rem;
+    margin-bottom: 3rem;
+}
+
+.insights-title {
+    font-size: 1.8rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.insight-item {
+    background: rgba(255, 255, 255, 0.05);
+    border-left: 4px solid;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    border-radius: 8px;
+    position: relative;
+}
+
+.insight-critical { border-left-color: #ff4757; }
+.insight-warning { border-left-color: #ffa502; }
+.insight-success { border-left-color: #2ed573; }
+.insight-info { border-left-color: #5352ed; }
+
+.insight-title {
+    font-weight: 600;
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+}
+
+.insight-description {
+    opacity: 0.9;
+    line-height: 1.6;
+}
+
+.risk-matrix {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin: 2rem 0;
+}
+
+.risk-category {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 1.5rem;
+    text-align: center;
+}
+
+.risk-category h4 {
+    margin-bottom: 1rem;
+    font-size: 1.2rem;
+}
+
+.risk-count {
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+
+.action-items {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 15px;
+    padding: 2rem;
+    margin-bottom: 3rem;
+}
+
+.action-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.action-priority {
+    padding: 0.25rem 0.75rem;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    flex-shrink: 0;
+}
+
+.priority-critical {
+    background: #ff4757;
+    color: white;
+}
+
+.priority-high {
+    background: #ff6b35;
+    color: white;
+}
+
+.priority-medium {
+    background: #ffa502;
+    color: white;
+}
+
+.action-content {
+    flex-grow: 1;
+}
+
+.action-title {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.export-section {
+    text-align: center;
+    margin-top: 3rem;
+}
+
+.export-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 0.75rem 2rem;
+    border-radius: 25px;
+    margin: 0 0.5rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.export-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-2px);
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadExecutiveDashboard();
+    
+    // Auto-refresh every 5 minutes
+    setInterval(loadExecutiveDashboard, 300000);
+});
+
+async function loadExecutiveDashboard() {
+    try {
+        const response = await fetch('/api/executive/dashboard');
+        const data = await response.json();
+        
+        updateSecurityScore(data.security_score);
+        updateMetrics(data.metrics);
+        updateBusinessInsights(data.insights);
+        updateActionItems(data.action_items);
+        
+    } catch (error) {
+        console.error('Failed to load executive dashboard:', error);
+    }
+}
+
+function updateSecurityScore(scoreData) {
+    const scoreElement = document.getElementById('securityScore');
+    const labelElement = document.getElementById('securityLabel');
+    
+    scoreElement.textContent = scoreData.score;
+    scoreElement.className = `score-value score-${scoreData.level}`;
+    labelElement.textContent = `${scoreData.level.charAt(0).toUpperCase() + scoreData.level.slice(1)} Risk`;
+}
+
+function updateMetrics(metrics) {
+    Object.keys(metrics).forEach(key => {
+        const metric = metrics[key];
+        const element = document.getElementById(key);
+        if (element) {
+            const valueEl = element.querySelector('.metric-value');
+            const trendEl = element.querySelector('.metric-trend');
+            
+            if (valueEl) valueEl.textContent = metric.value;
+            if (trendEl) {
+                trendEl.innerHTML = `<i class="bi bi-arrow-${metric.trend === 'up' ? 'up' : metric.trend === 'down' ? 'down' : 'right'}"></i>`;
+                trendEl.className = `metric-trend trend-${metric.trend}`;
+            }
+        }
+    });
+}
+
+function updateBusinessInsights(insights) {
+    const container = document.getElementById('businessInsights');
+    container.innerHTML = insights.map(insight => `
+        <div class="insight-item insight-${insight.type}">
+            <div class="insight-title">${insight.title}</div>
+            <div class="insight-description">${insight.description}</div>
+        </div>
+    `).join('');
+}
+
+function updateActionItems(items) {
+    const container = document.getElementById('actionItems');
+    container.innerHTML = items.map(item => `
+        <div class="action-item">
+            <div class="action-priority priority-${item.priority}">${item.priority}</div>
+            <div class="action-content">
+                <div class="action-title">${item.title}</div>
+                <div>${item.description}</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function exportExecutiveReport(format) {
+    try {
+        const response = await fetch(`/api/executive/export?format=${format}`);
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `executive_report_${new Date().toISOString().split('T')[0]}.${format}`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        }
+    } catch (error) {
+        console.error('Export failed:', error);
+    }
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="executive-dashboard">
+    <div class="container">
+        <!-- Executive Header -->
+        <div class="executive-header">
+            <h1 class="executive-title">Security Executive Dashboard</h1>
+            <p class="executive-subtitle">Strategic security posture overview for leadership</p>
+        </div>
+
+        <!-- Overall Security Score -->
+        <div class="security-score">
+            <div id="securityScore" class="score-value score-medium">--</div>
+            <div id="securityLabel" class="score-label">Security Score</div>
+            <p style="margin-top: 1rem; opacity: 0.8;">
+                Comprehensive risk assessment across all security domains
+            </p>
+        </div>
+
+        <!-- Key Business Metrics -->
+        <div class="metrics-grid">
+            <div class="metric-card" id="totalAssets">
+                <div class="metric-icon">🏢</div>
+                <div class="metric-value">--</div>
+                <div class="metric-label">Total Assets</div>
+                <div class="metric-trend"></div>
+            </div>
+            
+            <div class="metric-card" id="criticalIssues">
+                <div class="metric-icon">🚨</div>
+                <div class="metric-value">--</div>
+                <div class="metric-label">Critical Issues</div>
+                <div class="metric-trend"></div>
+            </div>
+            
+            <div class="metric-card" id="complianceScore">
+                <div class="metric-icon">✅</div>
+                <div class="metric-value">--</div>
+                <div class="metric-label">Compliance Score</div>
+                <div class="metric-trend"></div>
+            </div>
+            
+            <div class="metric-card" id="securityInvestment">
+                <div class="metric-icon">💰</div>
+                <div class="metric-value">--</div>
+                <div class="metric-label">Security ROI</div>
+                <div class="metric-trend"></div>
+            </div>
+        </div>
+
+        <!-- Risk Matrix -->
+        <div class="business-insights">
+            <h3 class="insights-title">Risk Distribution</h3>
+            <div class="risk-matrix">
+                <div class="risk-category">
+                    <h4>Critical</h4>
+                    <div class="risk-count" style="color: #ff4757;" id="criticalRiskCount">--</div>
+                    <p>Immediate Action Required</p>
+                </div>
+                <div class="risk-category">
+                    <h4>High</h4>
+                    <div class="risk-count" style="color: #ff6b35;" id="highRiskCount">--</div>
+                    <p>Address Within 7 Days</p>
+                </div>
+                <div class="risk-category">
+                    <h4>Medium</h4>
+                    <div class="risk-count" style="color: #ffa502;" id="mediumRiskCount">--</div>
+                    <p>Plan Remediation</p>
+                </div>
+                <div class="risk-category">
+                    <h4>Low</h4>
+                    <div class="risk-count" style="color: #2ed573;" id="lowRiskCount">--</div>
+                    <p>Monitor & Review</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Business Insights -->
+        <div class="business-insights">
+            <h3 class="insights-title">Strategic Security Insights</h3>
+            <div id="businessInsights">
+                <!-- Insights will be populated by JavaScript -->
+            </div>
+        </div>
+
+        <!-- Priority Action Items -->
+        <div class="action-items">
+            <h3 class="insights-title">Priority Action Items</h3>
+            <div id="actionItems">
+                <!-- Action items will be populated by JavaScript -->
+            </div>
+        </div>
+
+        <!-- Export Section -->
+        <div class="export-section">
+            <h3 style="margin-bottom: 1.5rem;">Executive Reports</h3>
+            <button class="export-btn" onclick="exportExecutiveReport('pdf')">
+                <i class="bi bi-file-pdf"></i> Executive PDF
+            </button>
+            <button class="export-btn" onclick="exportExecutiveReport('pptx')">
+                <i class="bi bi-file-slides"></i> Board Presentation
+            </button>
+            <button class="export-btn" onclick="exportExecutiveReport('excel')">
+                <i class="bi bi-file-spreadsheet"></i> Detailed Metrics
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}

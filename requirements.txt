@@ -20,3 +20,5 @@ pydantic
 python-jose[cryptography]
 passlib[bcrypt]
 python-dotenv
+pandas
+numpy

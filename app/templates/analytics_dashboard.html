@@ -1,0 +1,807 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<link href="/static/css/modern.css" rel="stylesheet">
+<style>
+/* Advanced Analytics Dashboard Styles */
+.analytics-dashboard {
+    background: linear-gradient(135deg, #1a1d23 0%, #2d3436 100%);
+    min-height: calc(100vh - 70px);
+    color: #e9ecef;
+}
+
+.dashboard-header {
+    background: rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid #404040;
+    padding: 2rem 0;
+    margin-bottom: 2rem;
+}
+
+.metric-card {
+    background: linear-gradient(145deg, #2d3436, #636e72);
+    border: 1px solid #404040;
+    border-radius: 15px;
+    padding: 1.5rem;
+    color: #e9ecef;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.metric-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    border-color: var(--accent-primary);
+}
+
+.metric-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+}
+
+.metric-value {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: var(--accent-primary);
+    text-shadow: 0 0 10px rgba(116, 185, 255, 0.3);
+}
+
+.metric-change {
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+}
+
+.metric-change.positive {
+    color: #2ecc71;
+}
+
+.metric-change.negative {
+    color: #e74c3c;
+}
+
+.chart-container {
+    background: rgba(45, 52, 54, 0.8);
+    border: 1px solid #404040;
+    border-radius: 15px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    backdrop-filter: blur(5px);
+}
+
+.chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid #404040;
+    padding-bottom: 1rem;
+}
+
+.chart-title {
+    color: #e9ecef;
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.time-range-selector {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.time-range-btn {
+    background: rgba(116, 185, 255, 0.1);
+    border: 1px solid rgba(116, 185, 255, 0.3);
+    color: #74b9ff;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.time-range-btn.active,
+.time-range-btn:hover {
+    background: rgba(116, 185, 255, 0.2);
+    border-color: #74b9ff;
+}
+
+.trend-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.8rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 15px;
+    font-weight: 500;
+}
+
+.trend-up {
+    background: rgba(46, 204, 113, 0.2);
+    color: #2ecc71;
+}
+
+.trend-down {
+    background: rgba(231, 76, 60, 0.2);
+    color: #e74c3c;
+}
+
+.trend-stable {
+    background: rgba(241, 196, 15, 0.2);
+    color: #f1c40f;
+}
+
+.vulnerability-breakdown {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.severity-card {
+    background: rgba(45, 52, 54, 0.6);
+    border-left: 4px solid;
+    padding: 1rem;
+    border-radius: 8px;
+}
+
+.severity-critical {
+    border-left-color: #e74c3c;
+}
+
+.severity-high {
+    border-left-color: #fd79a8;
+}
+
+.severity-medium {
+    border-left-color: #f39c12;
+}
+
+.severity-low {
+    border-left-color: #f1c40f;
+}
+
+.severity-info {
+    border-left-color: #74b9ff;
+}
+
+.executive-summary {
+    background: linear-gradient(135deg, rgba(116, 185, 255, 0.1), rgba(253, 121, 168, 0.1));
+    border: 1px solid rgba(116, 185, 255, 0.3);
+    border-radius: 15px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+}
+
+.executive-title {
+    color: #e9ecef;
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.risk-score {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 25px;
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.risk-critical {
+    background: rgba(231, 76, 60, 0.2);
+    color: #e74c3c;
+    border: 1px solid #e74c3c;
+}
+
+.risk-high {
+    background: rgba(253, 121, 168, 0.2);
+    color: #fd79a8;
+    border: 1px solid #fd79a8;
+}
+
+.risk-medium {
+    background: rgba(243, 156, 18, 0.2);
+    color: #f39c12;
+    border: 1px solid #f39c12;
+}
+
+.risk-low {
+    background: rgba(46, 204, 113, 0.2);
+    color: #2ecc71;
+    border: 1px solid #2ecc71;
+}
+
+.scan-timeline {
+    background: rgba(45, 52, 54, 0.6);
+    border: 1px solid #404040;
+    border-radius: 15px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.timeline-item {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid rgba(64, 64, 64, 0.5);
+}
+
+.timeline-item:last-child {
+    border-bottom: none;
+}
+
+.timeline-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 1rem;
+    flex-shrink: 0;
+}
+
+.timeline-dot.success {
+    background: #2ecc71;
+}
+
+.timeline-dot.warning {
+    background: #f39c12;
+}
+
+.timeline-dot.error {
+    background: #e74c3c;
+}
+
+.export-controls {
+    background: rgba(45, 52, 54, 0.6);
+    border: 1px solid #404040;
+    border-radius: 15px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.export-btn {
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+    border: none;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    margin-right: 0.5rem;
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.export-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(116, 185, 255, 0.3);
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Global chart configuration
+Chart.defaults.color = '#e9ecef';
+Chart.defaults.borderColor = 'rgba(64, 64, 64, 0.5)';
+Chart.defaults.backgroundColor = 'rgba(116, 185, 255, 0.1)';
+
+// Initialize dashboard when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    initializeAnalyticsDashboard();
+    startRealTimeUpdates();
+});
+
+async function initializeAnalyticsDashboard() {
+    try {
+        // Load dashboard data
+        const response = await fetch('/api/analytics/dashboard');
+        const data = await response.json();
+        
+        // Update metric cards
+        updateMetricCards(data.metrics);
+        
+        // Initialize charts
+        initializeVulnerabilityTrendChart(data.vulnerability_trends);
+        initializeScanVolumeChart(data.scan_volume);
+        initializeThreatDistributionChart(data.threat_distribution);
+        initializeComplianceChart(data.compliance_scores);
+        
+        // Update executive summary
+        updateExecutiveSummary(data.executive_summary);
+        
+        // Update timeline
+        updateScanTimeline(data.recent_activities);
+        
+    } catch (error) {
+        console.error('Failed to load analytics dashboard:', error);
+        showNotification('Failed to load analytics data', 'error');
+    }
+}
+
+function updateMetricCards(metrics) {
+    // Update each metric card
+    Object.keys(metrics).forEach(key => {
+        const metric = metrics[key];
+        const element = document.getElementById(key);
+        if (element) {
+            const valueEl = element.querySelector('.metric-value');
+            const changeEl = element.querySelector('.metric-change');
+            
+            if (valueEl) valueEl.textContent = metric.value;
+            if (changeEl) {
+                changeEl.textContent = metric.change;
+                changeEl.className = `metric-change ${metric.change_type}`;
+            }
+        }
+    });
+}
+
+function initializeVulnerabilityTrendChart(data) {
+    const ctx = document.getElementById('vulnerabilityTrendChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.labels,
+            datasets: [{
+                label: 'Critical',
+                data: data.critical,
+                borderColor: '#e74c3c',
+                backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                tension: 0.4
+            }, {
+                label: 'High',
+                data: data.high,
+                borderColor: '#fd79a8',
+                backgroundColor: 'rgba(253, 121, 168, 0.1)',
+                tension: 0.4
+            }, {
+                label: 'Medium',
+                data: data.medium,
+                borderColor: '#f39c12',
+                backgroundColor: 'rgba(243, 156, 18, 0.1)',
+                tension: 0.4
+            }, {
+                label: 'Low',
+                data: data.low,
+                borderColor: '#f1c40f',
+                backgroundColor: 'rgba(241, 196, 15, 0.1)',
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Vulnerability Trends Over Time',
+                    color: '#e9ecef'
+                },
+                legend: {
+                    labels: {
+                        color: '#e9ecef'
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        color: 'rgba(64, 64, 64, 0.3)'
+                    },
+                    ticks: {
+                        color: '#e9ecef'
+                    }
+                },
+                y: {
+                    grid: {
+                        color: 'rgba(64, 64, 64, 0.3)'
+                    },
+                    ticks: {
+                        color: '#e9ecef'
+                    }
+                }
+            }
+        }
+    });
+}
+
+function initializeScanVolumeChart(data) {
+    const ctx = document.getElementById('scanVolumeChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: data.labels,
+            datasets: [{
+                label: 'Scans Completed',
+                data: data.volumes,
+                backgroundColor: 'rgba(116, 185, 255, 0.6)',
+                borderColor: '#74b9ff',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Scan Volume Over Time',
+                    color: '#e9ecef'
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        color: 'rgba(64, 64, 64, 0.3)'
+                    },
+                    ticks: {
+                        color: '#e9ecef'
+                    }
+                },
+                y: {
+                    grid: {
+                        color: 'rgba(64, 64, 64, 0.3)'
+                    },
+                    ticks: {
+                        color: '#e9ecef'
+                    }
+                }
+            }
+        }
+    });
+}
+
+function initializeThreatDistributionChart(data) {
+    const ctx = document.getElementById('threatDistributionChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: data.labels,
+            datasets: [{
+                data: data.values,
+                backgroundColor: [
+                    '#e74c3c',
+                    '#fd79a8',
+                    '#f39c12',
+                    '#f1c40f',
+                    '#74b9ff'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Threat Type Distribution',
+                    color: '#e9ecef'
+                },
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        color: '#e9ecef',
+                        padding: 20
+                    }
+                }
+            }
+        }
+    });
+}
+
+function initializeComplianceChart(data) {
+    const ctx = document.getElementById('complianceChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'radar',
+        data: {
+            labels: data.frameworks,
+            datasets: [{
+                label: 'Current Score',
+                data: data.current_scores,
+                borderColor: '#74b9ff',
+                backgroundColor: 'rgba(116, 185, 255, 0.2)',
+                pointBackgroundColor: '#74b9ff'
+            }, {
+                label: 'Target Score',
+                data: data.target_scores,
+                borderColor: '#2ecc71',
+                backgroundColor: 'rgba(46, 204, 113, 0.1)',
+                pointBackgroundColor: '#2ecc71'
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Security Compliance Scores',
+                    color: '#e9ecef'
+                }
+            },
+            scales: {
+                r: {
+                    beginAtZero: true,
+                    max: 100,
+                    grid: {
+                        color: 'rgba(64, 64, 64, 0.3)'
+                    },
+                    pointLabels: {
+                        color: '#e9ecef'
+                    },
+                    ticks: {
+                        color: '#e9ecef'
+                    }
+                }
+            }
+        }
+    });
+}
+
+function updateExecutiveSummary(summary) {
+    document.getElementById('riskScore').textContent = summary.risk_score;
+    document.getElementById('riskLevel').className = `risk-score risk-${summary.risk_level}`;
+    document.getElementById('executiveSummaryText').innerHTML = summary.summary_text;
+}
+
+function updateScanTimeline(activities) {
+    const timeline = document.getElementById('scanTimeline');
+    timeline.innerHTML = activities.map(activity => `
+        <div class="timeline-item">
+            <div class="timeline-dot ${activity.status}"></div>
+            <div class="flex-grow-1">
+                <div class="fw-bold">${activity.title}</div>
+                <div class="text-muted small">${activity.description}</div>
+                <div class="text-muted small">${activity.timestamp}</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function startRealTimeUpdates() {
+    // Update metrics every 30 seconds
+    setInterval(() => {
+        fetch('/api/analytics/metrics')
+            .then(response => response.json())
+            .then(data => updateMetricCards(data))
+            .catch(error => console.error('Failed to update metrics:', error));
+    }, 30000);
+}
+
+// Export functions
+async function exportAnalytics(format) {
+    try {
+        const response = await fetch(`/api/analytics/export?format=${format}`);
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `analytics_report_${new Date().toISOString().split('T')[0]}.${format}`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            showNotification(`Analytics report exported as ${format.toUpperCase()}`, 'success');
+        } else {
+            throw new Error('Export failed');
+        }
+    } catch (error) {
+        console.error('Export error:', error);
+        showNotification('Failed to export analytics report', 'error');
+    }
+}
+
+function showNotification(message, type) {
+    // Simple notification system
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type} position-fixed top-0 end-0 m-3`;
+    notification.style.zIndex = '9999';
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.remove();
+    }, 3000);
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="analytics-dashboard">
+    <!-- Dashboard Header -->
+    <div class="dashboard-header">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1 class="mb-2">
+                        <i class="bi bi-graph-up-arrow"></i>
+                        Security Analytics Dashboard
+                    </h1>
+                    <p class="text-muted mb-0">
+                        Comprehensive security posture analysis and threat intelligence
+                    </p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <div class="time-range-selector">
+                        <button class="time-range-btn active" data-range="7d">7 Days</button>
+                        <button class="time-range-btn" data-range="30d">30 Days</button>
+                        <button class="time-range-btn" data-range="90d">90 Days</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Key Metrics -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="metric-card" id="totalScans">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="text-muted mb-2">Total Scans</h6>
+                            <div class="metric-value">--</div>
+                            <div class="metric-change">--</div>
+                        </div>
+                        <i class="bi bi-activity" style="font-size: 2rem; opacity: 0.3;"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="metric-card" id="totalVulnerabilities">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="text-muted mb-2">Total Vulnerabilities</h6>
+                            <div class="metric-value">--</div>
+                            <div class="metric-change">--</div>
+                        </div>
+                        <i class="bi bi-shield-exclamation" style="font-size: 2rem; opacity: 0.3;"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="metric-card" id="criticalVulns">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="text-muted mb-2">Critical Issues</h6>
+                            <div class="metric-value">--</div>
+                            <div class="metric-change">--</div>
+                        </div>
+                        <i class="bi bi-exclamation-triangle-fill" style="font-size: 2rem; opacity: 0.3;"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="metric-card" id="avgScanTime">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="text-muted mb-2">Avg Scan Time</h6>
+                            <div class="metric-value">--</div>
+                            <div class="metric-change">--</div>
+                        </div>
+                        <i class="bi bi-clock" style="font-size: 2rem; opacity: 0.3;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Executive Summary -->
+        <div class="executive-summary">
+            <div class="executive-title">
+                <i class="bi bi-clipboard-data"></i>
+                Executive Summary
+            </div>
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <div id="executiveSummaryText">
+                        Loading executive summary...
+                    </div>
+                </div>
+                <div class="col-md-4 text-end">
+                    <div class="mb-2">
+                        <strong>Overall Risk Score</strong>
+                    </div>
+                    <div id="riskLevel" class="risk-score">
+                        <span id="riskScore">--</span>
+                        <i class="bi bi-shield-exclamation"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row 1 -->
+        <div class="row mb-4">
+            <div class="col-lg-8">
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h5 class="chart-title">Vulnerability Trends</h5>
+                        <div class="trend-indicator trend-up">
+                            <i class="bi bi-arrow-up"></i>
+                            +12% this week
+                        </div>
+                    </div>
+                    <canvas id="vulnerabilityTrendChart" height="300"></canvas>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h5 class="chart-title">Threat Distribution</h5>
+                    </div>
+                    <canvas id="threatDistributionChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row 2 -->
+        <div class="row mb-4">
+            <div class="col-lg-6">
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h5 class="chart-title">Scan Volume</h5>
+                    </div>
+                    <canvas id="scanVolumeChart"></canvas>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h5 class="chart-title">Compliance Scores</h5>
+                    </div>
+                    <canvas id="complianceChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity Timeline -->
+        <div class="row mb-4">
+            <div class="col-lg-8">
+                <div class="scan-timeline">
+                    <h5 class="mb-3">
+                        <i class="bi bi-clock-history"></i>
+                        Recent Security Activities
+                    </h5>
+                    <div id="scanTimeline">
+                        <!-- Timeline items will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="export-controls">
+                    <h5 class="mb-3">
+                        <i class="bi bi-download"></i>
+                        Export Reports
+                    </h5>
+                    <div class="d-grid gap-2">
+                        <button class="export-btn" onclick="exportAnalytics('pdf')">
+                            <i class="bi bi-file-pdf"></i>
+                            Executive PDF Report
+                        </button>
+                        <button class="export-btn" onclick="exportAnalytics('xlsx')">
+                            <i class="bi bi-file-spreadsheet"></i>
+                            Detailed Excel Report
+                        </button>
+                        <button class="export-btn" onclick="exportAnalytics('json')">
+                            <i class="bi bi-file-code"></i>
+                            Raw Data (JSON)
+                        </button>
+                        <button class="export-btn" onclick="exportAnalytics('csv')">
+                            <i class="bi bi-filetype-csv"></i>
+                            CSV Data Export
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
