@@ -2552,6 +2552,111 @@ class ReconForgeTerminal:
         
         input("\nPress Enter to continue...")
     
+    async def run_xxe_testing(self):
+        """Run XXE testing using pentest modules"""
+        target = self.get_target_input()
+        if not target:
+            return
+        
+        self.console.print(f"[green]Starting XXE testing for: {target}[/green]")
+        
+        try:
+            from pentest.xxe import XXETester
+            xxe_tester = XXETester()
+            results = await xxe_tester.test(target)
+            
+            if results:
+                self.console.print("[red]XXE vulnerabilities found![/red]")
+                for result in results[:5]:
+                    self.console.print(f"[yellow]{result.title}[/yellow]")
+            else:
+                self.console.print("[green]No XXE vulnerabilities found[/green]")
+                
+        except Exception as e:
+            self.console.print(f"[red]XXE testing failed: {e}[/red]")
+        
+        input("\nPress Enter to continue...")
+    
+    async def run_rce_testing(self):
+        """Run RCE testing using pentest modules"""
+        target = self.get_target_input()
+        if not target:
+            return
+        
+        self.console.print(f"[green]Starting RCE testing for: {target}[/green]")
+        
+        try:
+            from pentest.rce import RCETester
+            rce_tester = RCETester()
+            results = await rce_tester.test(target)
+            
+            if results:
+                self.console.print("[red]RCE vulnerabilities found![/red]")
+                for result in results[:5]:
+                    self.console.print(f"[yellow]{result.title}[/yellow]")
+            else:
+                self.console.print("[green]No RCE vulnerabilities found[/green]")
+                
+        except Exception as e:
+            self.console.print(f"[red]RCE testing failed: {e}[/red]")
+        
+        input("\nPress Enter to continue...")
+    
+    async def run_directory_traversal_testing(self):
+        """Run directory traversal testing using pentest modules"""
+        target = self.get_target_input()
+        if not target:
+            return
+        
+        self.console.print(f"[green]Starting directory traversal testing for: {target}[/green]")
+        
+        try:
+            from pentest.directory_traversal import DirectoryTraversalTester
+            dt_tester = DirectoryTraversalTester()
+            results = await dt_tester.test(target)
+            
+            if results:
+                self.console.print("[red]Directory traversal vulnerabilities found![/red]")
+                for result in results[:5]:
+                    self.console.print(f"[yellow]{result.title}[/yellow]")
+            else:
+                self.console.print("[green]No directory traversal vulnerabilities found[/green]")
+                
+        except Exception as e:
+            self.console.print(f"[red]Directory traversal testing failed: {e}[/red]")
+        
+        input("\nPress Enter to continue...")
+    
+    async def run_metasploit_integration(self):
+        """Run Metasploit integration for exploitation"""
+        target = self.get_target_input()
+        if not target:
+            return
+        
+        self.console.print(f"[green]Starting Metasploit integration for: {target}[/green]")
+        self.console.print("[yellow]WARNING: This will attempt safe exploitation tests only[/yellow]")
+        
+        confirm = Confirm.ask("Continue with Metasploit testing?")
+        if not confirm:
+            return
+        
+        try:
+            from pentest.metasploit import MetasploitIntegration
+            msf = MetasploitIntegration()
+            results = await msf.run_safe_tests(target)
+            
+            if results:
+                self.console.print("[red]Exploitable vulnerabilities found![/red]")
+                for result in results[:5]:
+                    self.console.print(f"[yellow]{result.title}[/yellow]")
+            else:
+                self.console.print("[green]No exploitable vulnerabilities found[/green]")
+                
+        except Exception as e:
+            self.console.print(f"[red]Metasploit integration failed: {e}[/red]")
+        
+        input("\nPress Enter to continue...")
+    
     async def generate_json_report(self):
         """Generate JSON report of scan results"""
         self.console.print("[green]Generating JSON report...[/green]")

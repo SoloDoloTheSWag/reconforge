@@ -282,6 +282,41 @@ class ReconForgeDB:
                 scans.append(scan)
             return scans
     
+    def get_recent_scans(self, scan_type: str = None, limit: int = 50) -> List[Dict]:
+        """Get recent scans, optionally filtered by scan type"""
+        query = "SELECT * FROM scans"
+        params = []
+        
+        if scan_type:
+            query += " WHERE scan_type = ?"
+            params.append(scan_type)
+        
+        query += " ORDER BY created_at DESC LIMIT ?"
+        params.append(limit)
+        
+        with self.get_connection() as conn:
+            rows = conn.execute(query, params).fetchall()
+            scans = []
+            for row in rows:
+                scan = dict(row)
+                # Parse JSON config field if present
+                if scan.get('config'):
+                    try:
+                        scan['config'] = json.loads(scan['config'])
+                    except (json.JSONDecodeError, TypeError):
+                        scan['config'] = {}
+                
+                # Parse datetime fields
+                for field in ['created_at', 'updated_at', 'start_time', 'end_time']:
+                    if scan.get(field) and isinstance(scan[field], str):
+                        try:
+                            from datetime import datetime
+                            scan[field] = datetime.fromisoformat(scan[field].replace('Z', '+00:00'))
+                        except (ValueError, TypeError):
+                            pass
+                scans.append(scan)
+            return scans
+    
     # Subdomain management methods
     def add_subdomain(self, scan_id: int, subdomain: str, **kwargs):
         """Add or update subdomain information"""
