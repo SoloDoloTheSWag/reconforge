@@ -43,7 +43,7 @@ from scanners.web import get_web_scanners
 from pentest.base import PentestManager, get_pentest_modules
 
 # Version
-__version__ = "1.2.0"
+__version__ = "1.3.0"
 
 # Global managers
 source_manager = SourceManager()
@@ -851,5 +851,12 @@ if __name__ == '__main__':
     # Load configuration
     load_config()
     
-    # Run CLI
-    cli()
+    # Check if running without arguments - launch interactive terminal by default
+    if len(sys.argv) == 1:
+        # Import and run interactive terminal interface
+        import asyncio
+        from interface.terminal import main as terminal_main
+        asyncio.run(terminal_main())
+    else:
+        # Run traditional CLI with arguments
+        cli()

@@ -202,7 +202,52 @@ You should see `(venv)` at the beginning of your command prompt like:
 
 **3. You're ready to use ReconForge!**
 
-### CLI Usage
+### 🎯 Interactive Terminal Interface (Primary)
+
+**ReconForge now launches an interactive terminal interface by default:**
+
+```bash
+# Launch interactive terminal (primary interface)
+python reconforge.py
+```
+
+**🆕 Enhanced Terminal Experience:**
+- **msfconsole-style interface** with professional menu system
+- **Real-time progress indicators** during scans
+- **Colored output** (green for success, red for vulnerabilities, blue for info)
+- **Breadcrumb navigation** with back/exit options
+- **Session management** with target persistence
+- **Tabular data display** for organized results
+- **Export capabilities** directly from terminal
+
+**Main Menu Structure:**
+```
+ReconForge Professional Reconnaissance Platform
+==============================================
+1. Subdomain Discovery
+2. Vulnerability Scanning  
+3. Port Scanning & Service Detection
+4. Directory Enumeration
+5. SQL Injection Testing
+6. Exploitation Toolkit
+7. Report Generation & Export
+8. Scan History & Database
+9. Launch Web Dashboard
+10. Tool Configuration
+11. Exit
+```
+
+### 📱 Interactive Features
+
+- **Progress Tracking**: Real-time scan progress with spinners and progress bars
+- **Result Pagination**: Browse large result sets efficiently  
+- **Search & Filter**: Find specific results within scans
+- **Help System**: Contextual help accessible throughout interface
+- **Auto-completion**: Smart input suggestions for targets and options
+- **Session Resume**: Continue interrupted scans seamlessly
+- **Multi-format Export**: JSON, CSV, TXT exports from any screen
+
+### CLI Usage (Secondary)
 
 **Subdomain Discovery:**
 ```bash
@@ -258,9 +303,9 @@ python reconforge.py full example.com --skip-pentest
 python reconforge.py full example.com --output-dir /path/to/reports
 ```
 
-### Web Interface
+### Web Interface (Secondary)
 
-**IMPORTANT: Activate Virtual Environment First**
+**Launch from Interactive Terminal or Directly:**
 ```bash
 # Navigate to project directory
 cd /home/kali/reconforge
@@ -273,17 +318,19 @@ source venv/bin/activate
 
 **Start the web dashboard:**
 
-**Option 1: Use the convenient startup script**
+**Option 1: From Interactive Terminal (Recommended)**
 ```bash
-./start_web.sh
+python reconforge.py
+# Then select option 9: Launch Web Dashboard
 ```
 
-**Option 2: Manual activation and startup**
+**Option 2: Direct Launch**
 ```bash
-# Activate virtual environment
-source venv/bin/activate
+# Use the convenient startup script
+./start_web.sh
 
-# Start web interface
+# Or manual activation and startup
+source venv/bin/activate
 python reconforge.py web --host 0.0.0.0 --port 8000
 ```
 

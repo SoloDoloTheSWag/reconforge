@@ -497,3 +497,47 @@ class ReconForgeDB:
                 WHERE created_at < datetime('now', '-{} days')
             '''.format(days_old))
             conn.execute('VACUUM')
+    
+    def complete_scan(self, scan_id: int, result_count: int = 0, scan_type: str = None):
+        """Mark a scan as completed with results"""
+        updates = {
+            'status': 'completed',
+            'end_time': datetime.now(),
+            'duration': 0  # Will be calculated from start/end times
+        }
+        
+        # Update specific result counts based on scan type
+        if scan_type == 'subdomain_discovery':
+            updates['total_subdomains'] = result_count
+        elif scan_type == 'vulnerability_scan':
+            updates['total_vulns'] = result_count
+        elif scan_type == 'port_scan':
+            updates['total_services'] = result_count
+        
+        self.update_scan(scan_id, **updates)
+    
+    def fail_scan(self, scan_id: int, error_message: str = None):
+        """Mark a scan as failed with optional error message"""
+        updates = {
+            'status': 'failed',
+            'end_time': datetime.now()
+        }
+        
+        if error_message:
+            updates['notes'] = error_message
+            
+        self.update_scan(scan_id, **updates)
+    
+    def add_vulnerability_simple(self, scan_id: int, target: str, vulnerability_type: str, 
+                                severity: str, title: str, description: str = "", url: str = ""):
+        """Simple method to add vulnerability (used by terminal interface)"""
+        vuln_data = {
+            'scan_id': scan_id,
+            'subdomain': target,
+            'vulnerability_type': vulnerability_type,
+            'severity': severity,
+            'title': title,
+            'description': description,
+            'url': url
+        }
+        return self.add_vulnerability(scan_id, vuln_data)

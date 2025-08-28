@@ -6,7 +6,7 @@
 
 **ReconForge** is a professional penetration testing framework combining reconnaissance, vulnerability scanning, and penetration testing in a unified platform.
 
-**Current Version**: v1.2.2
+**Current Version**: v1.3.0
 **Primary Language**: Python 3.8+
 **Framework Type**: Web-based (FastAPI) + CLI
 **License**: MIT
