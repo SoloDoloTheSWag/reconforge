@@ -151,40 +151,44 @@ class TerminalUI:
         return not self.config.get('GENERAL', 'setup_completed', False)
     
     def _run_first_time_setup(self) -> bool:
-        """Run first-time setup wizard"""
+        """Run simplified first-time setup"""
         self.display.clear_screen()
-        self.display.print_header("Welcome to ReconForge!", "First-time setup wizard")
+        self.display.print_header("Welcome to ReconForge!", "100% FREE Reconnaissance Platform")
         
-        self.display.print_status("Welcome to ReconForge! Let's get you set up.", StatusType.INFO)
+        self.display.print_status("🎉 Welcome to ReconForge v2.0.1!", StatusType.SUCCESS)
+        self.display.print_empty_lines()
+        
+        # Show key features
+        self.display.console.print("✅ [green]100% FREE resources - no API keys required![/green]")
+        self.display.console.print("✅ [green]16 free passive discovery sources[/green]")
+        self.display.console.print("✅ [green]Professional reconnaissance tools[/green]")
+        self.display.console.print("✅ [green]Enterprise-grade logging & reporting[/green]")
         self.display.print_empty_lines()
         
         try:
-            # Ask for user preferences
-            setup_data = {}
-            
-            # Terminal theme
-            themes = ["default", "dark", "hacker", "light"]
-            current_theme = self.config.get('TERMINAL', 'theme', 'default')
-            
-            self.display.console.print("Choose your terminal theme:")
-            theme_choice = self.display.prompt_choice("Theme", themes, current_theme)
-            setup_data['theme'] = theme_choice
-            
             # FREE RESOURCES ONLY - No API keys needed!
-            self.display.print_status("✅ ReconForge now uses 100% FREE resources - no API keys required!", StatusType.SUCCESS)
+            self.display.print_status("🔍 ReconForge uses completely free sources:", StatusType.INFO)
+            self.display.console.print("   • crt.sh, Wayback Machine, AlienVault OTX")
+            self.display.console.print("   • HackerTarget, ThreatMiner, RapidDNS")
+            self.display.console.print("   • DNSDumpster, CertSpotter, BufferOver")
+            self.display.console.print("   • URLScan.io, Anubis, Riddler.io")
+            self.display.print_empty_lines()
             
             # Tool check
-            self.display.print_status("Checking tool availability...", StatusType.INFO)
+            self.display.print_status("Checking available tools...", StatusType.INFO)
             self.utils.tool_manager.refresh_tool_availability()
             
+            # Use default theme (can be changed later in Configuration menu)
+            default_theme = 'default'
+            
             # Save setup completion
-            self.config.set_setting('GENERAL', 'setup_completed', True)
-            self.config.set_setting('GENERAL', 'setup_date', datetime.now().isoformat())
-            self.config.set_setting('TERMINAL', 'theme', setup_data['theme'])
+            self.config.set('GENERAL', 'setup_completed', True)
+            self.config.set('GENERAL', 'setup_date', datetime.now().isoformat())
+            self.config.set('TERMINAL', 'theme', default_theme)
             self.config.save_config()
             
-            self.display.print_status("Setup completed successfully!", StatusType.SUCCESS)
-            self.display.prompt_input("Press Enter to continue...")
+            self.display.print_status("🚀 Setup completed! You can change themes in Configuration → Terminal Theme", StatusType.SUCCESS)
+            self.display.prompt_input("Press Enter to start ReconForge...")
             
             return True
         
@@ -193,7 +197,13 @@ class TerminalUI:
             return False
         except Exception as e:
             self.display.print_status(f"Setup error: {str(e)}", StatusType.ERROR)
-            return False
+            self.logger.log_error(f"First-time setup failed: {str(e)}", e)
+            # Continue anyway with defaults
+            self.config.set('GENERAL', 'setup_completed', True)
+            self.config.set('GENERAL', 'setup_date', datetime.now().isoformat())
+            self.config.set('TERMINAL', 'theme', 'default')
+            self.config.save_config()
+            return True
     
     def _setup_api_keys(self):
         """Setup API keys"""
@@ -613,15 +623,29 @@ Stay secure! 🔒
         themes = ["default", "dark", "hacker", "light"]
         current_theme = context.config.get('TERMINAL', 'theme', 'default')
         
-        new_theme = self.display.prompt_choice("Select theme", themes, current_theme)
+        self.display.console.print(f"Current theme: [bold]{current_theme}[/bold]")
+        self.display.console.print("\nAvailable themes:")
+        for i, theme in enumerate(themes, 1):
+            indicator = " [green]✓ (current)[/green]" if theme == current_theme else ""
+            self.display.console.print(f"  {i}. {theme}{indicator}")
         
-        if new_theme != current_theme:
-            context.config.set_setting('TERMINAL', 'theme', new_theme)
-            context.config.save_config()
-            self.display.print_status(f"Theme changed to '{new_theme}' - restart to apply", StatusType.SUCCESS)
-        else:
-            self.display.print_status("Theme unchanged", StatusType.INFO)
+        self.display.print_empty_lines()
         
+        try:
+            new_theme = self.display.prompt_choice("Select new theme", themes, current_theme)
+            
+            if new_theme and new_theme != current_theme:
+                context.config.set('TERMINAL', 'theme', new_theme)
+                context.config.save_config()
+                self.display.print_status(f"✅ Theme changed to '{new_theme}'!", StatusType.SUCCESS)
+                self.display.console.print("💡 [yellow]Tip: Changes take effect immediately in new menus[/yellow]")
+            else:
+                self.display.print_status("Theme unchanged", StatusType.INFO)
+                
+        except (KeyboardInterrupt, Exception) as e:
+            self.display.print_status("Theme change cancelled", StatusType.WARNING)
+            
+        self.display.prompt_input("\nPress Enter to continue...")
         return None
     
     def _action_backup_config(self, context: MenuContext) -> Optional[str]:
