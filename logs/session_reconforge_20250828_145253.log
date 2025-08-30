@@ -1,0 +1,25 @@
+2025-08-28 14:52:53 | reconforge.main      | INFO     | _log_to_appropriate_logger | [SYSTEM] ReconForge logging system initialized | Data: {"session_id": "reconforge_20250828_145253", "log_directory": "logs", "session_start": "2025-08-28T14:52:53.874665", "python_version": "3.13.6 (main, Aug  7 2025, 10:53:54) [GCC 14.2.0]", "platform": "linux"}
+2025-08-28 14:52:53 | reconforge.main      | INFO     | _log_to_appropriate_logger | [SYSTEM] Log level changed to INFO
+2025-08-28 14:52:53 | reconforge.main      | INFO     | _log_to_appropriate_logger | [SYSTEM] === ReconForge Application Startup ===
+2025-08-28 14:52:53 | reconforge.main      | INFO     | _log_to_appropriate_logger | [SYSTEM] Version: 2.0.0
+2025-08-28 14:52:53 | reconforge.main      | INFO     | _log_to_appropriate_logger | [SYSTEM] Build Date: 2025-08-28
+2025-08-28 14:52:53 | reconforge.main      | INFO     | _log_to_appropriate_logger | [SYSTEM] Startup Time: 2025-08-28T18:52:53.874597+00:00
+2025-08-28 14:52:53 | reconforge.main      | INFO     | _log_to_appropriate_logger | [SYSTEM] Python Version: 3.13.6 (main, Aug  7 2025, 10:53:54) [GCC 14.2.0]
+2025-08-28 14:52:53 | reconforge.main      | INFO     | _log_to_appropriate_logger | [SYSTEM] Working Directory: /home/kali/reconforge
+2025-08-28 14:52:53 | reconforge.main      | ERROR    | _log_to_appropriate_logger | [ERROR] Application startup failed: argument should be a str or an os.PathLike object where __fspath__ returns a str, not 'NoneType'
+2025-08-28 14:52:53 | reconforge.main      | ERROR    | _log_to_appropriate_logger | [ERROR] Startup traceback: Traceback (most recent call last):
+  File "/home/kali/reconforge/main.py", line 105, in startup
+    self.config = ReconForgeConfig(config_file=self.config_path)
+                  ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kali/reconforge/core/config.py", line 132, in __init__
+    self.config_file = Path(config_file)
+                       ~~~~^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/pathlib/_local.py", line 505, in __init__
+    super().__init__(*args)
+    ~~~~~~~~~~~~~~~~^^^^^^^
+  File "/usr/lib/python3.13/pathlib/_local.py", line 132, in __init__
+    raise TypeError(
+    ...<2 lines>...
+        f"not {type(path).__name__!r}")
+TypeError: argument should be a str or an os.PathLike object where __fspath__ returns a str, not 'NoneType'
+
