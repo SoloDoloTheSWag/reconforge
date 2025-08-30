@@ -70,21 +70,63 @@ venv.bak/
 ehthumbs.db
 Thumbs.db
 
-# ReconForge specific
+# ReconForge specific - ALL sensitive data
+logs/
+logs/*
 logs/*.log
 logs/*.jsonl
+data/
+data/*
 data/*.db
 data/*.sqlite
 data/*.sqlite3
 config_backups/
 exports/
+exports/*
 *.tmp
 *.temp
 
-# Sensitive information
+# Sensitive configuration and credentials
 config.json
 api_keys.json
 credentials.json
+*.key
+*.pem
+*.crt
+*.p12
+*.pfx
+.env.local
+.env.production
 
-# Session data
+# Session data and scan results
 session_*
+scan_*
+target_*
+results_*
+reports_*
+
+# API keys and tokens (additional protection)
+*api_key*
+*secret*
+*token*
+*password*
+*credential*
+
+# Backup files that might contain sensitive data
+*.bak
+*.backup
+config_*
+backup_*
+
+# Operating system and tool logs
+*.out
+nohup.out
+debug.log
+error.log
+
+# Database and cache files
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+.cache/
+cache/
