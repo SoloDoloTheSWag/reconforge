@@ -170,9 +170,8 @@ class TerminalUI:
             theme_choice = self.display.prompt_choice("Theme", themes, current_theme)
             setup_data['theme'] = theme_choice
             
-            # API Keys setup prompt
-            if self.display.prompt_confirm("Would you like to configure API keys now? (You can do this later)", default=False):
-                self._setup_api_keys()
+            # FREE RESOURCES ONLY - No API keys needed!
+            self.display.print_status("✅ ReconForge now uses 100% FREE resources - no API keys required!", StatusType.SUCCESS)
             
             # Tool check
             self.display.print_status("Checking tool availability...", StatusType.INFO)
@@ -400,9 +399,9 @@ Stay secure! 🔒
                        self._action_general_settings,
                        "View and modify general settings", "s")
         
-        menu.add_action("apikeys", "🔑 API Keys",
-                       self._action_api_keys,
-                       "Manage API keys for external services", "a")
+        menu.add_action("free_info", "🆓 FREE Resources Info",
+                       self._action_free_info,
+                       "Information about free resources used", "f")
         
         menu.add_action("theme", "🎨 Terminal Theme",
                        self._action_change_theme,
@@ -584,12 +583,26 @@ Stay secure! 🔒
         
         return None
     
-    def _action_api_keys(self, context: MenuContext) -> Optional[str]:
-        """API keys action"""
-        self.display.print_header("API Keys Management", "External Service Configuration")
+    def _action_free_info(self, context: MenuContext) -> Optional[str]:
+        """Free resources information"""
+        self.display.print_header("FREE Resources Information", "100% Free Reconnaissance Sources")
         
-        if self.display.prompt_confirm("Configure API keys?", default=True):
-            self._setup_api_keys()
+        free_sources = {
+            "Certificate Transparency": ["crt.sh", "CertSpotter"],
+            "Web Archives": ["Internet Archive Wayback Machine"],
+            "Threat Intelligence": ["AlienVault OTX", "ThreatMiner"],
+            "DNS Databases": ["HackerTarget", "RapidDNS", "DNSDumpster"],
+            "Security Tools": ["BufferOver", "URLScan.io", "Anubis", "Riddler"],
+            "CLI Tools": ["subfinder", "assetfinder", "findomain", "chaos", "amass"]
+        }
+        
+        for category, sources in free_sources.items():
+            self.display.console.print(f"\n[{self.display.colors['accent']}]{category}[/]:")
+            for source in sources:
+                self.display.console.print(f"  • {source}")
+        
+        self.display.console.print(f"\n[{self.display.colors['success']}]✅ All resources are completely FREE - no API keys or payments required![/]")
+        self.display.prompt_input("\nPress Enter to continue...")
         
         return None
     

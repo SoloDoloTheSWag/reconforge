@@ -104,7 +104,7 @@ reconforge/
 ### **1. Subdomain Discovery** 
 - **20+ Discovery Sources**: Passive and active enumeration
 - **Tools**: Subfinder, Assetfinder, Amass, Chaos, Findomain
-- **APIs**: crt.sh, VirusTotal, SecurityTrails, Shodan, Censys
+- **FREE APIs**: crt.sh, Wayback Machine, AlienVault OTX, HackerTarget, ThreatMiner, RapidDNS, DNSDumpster, CertSpotter, BufferOver, URLScan.io, Anubis, Riddler
 - **Features**: DNS resolution, alive verification, technology detection
 
 ### **2. Vulnerability Scanning**
@@ -169,9 +169,8 @@ logs/
     "max_concurrent_scans": 5
   },
   "API_KEYS": {
-    "shodan": "encrypted_api_key",
-    "virustotal": "encrypted_api_key",
-    "securitytrails": "encrypted_api_key"
+    "note": "FREE RESOURCES ONLY - No API keys required!",
+    "description": "ReconForge now uses 100% free resources"
   },
   "TOOLS": {
     "nmap_path": "/usr/bin/nmap",
@@ -249,7 +248,7 @@ python3 main.py
 
 ### **Basic Workflow**
 1. **Start ReconForge**: `python3 main.py`
-2. **Configure API Keys**: Menu → Configuration → API Keys
+2. **No Setup Required**: 100% FREE resources - no API keys needed! 🎉
 3. **Run Subdomain Discovery**: Menu → Reconnaissance → Subdomain Discovery
 4. **Perform Vulnerability Scan**: Menu → Vulnerability Assessment → Nuclei Scan
 5. **View Results**: Menu → Results & Reports → Recent Scans
@@ -276,7 +275,7 @@ python3 main.py
 - **Audit Logging**: Complete logging of all actions for accountability
 
 ### **Data Protection**
-- **API Key Encryption**: Sensitive data is encrypted at rest
+- **No API Keys Required**: 100% free resources - no sensitive credentials to manage
 - **Local Storage**: All data stored locally, no cloud transmission
 - **Session Isolation**: Each session is tracked independently
 - **Secure Defaults**: Conservative security settings by default
@@ -437,7 +436,7 @@ rm config.json && python3 main.py
 1. **Tools not found**: Install missing tools or update PATH
 2. **Permission errors**: Run with appropriate privileges for network scanning
 3. **Database locks**: Ensure no other ReconForge instances are running
-4. **API key issues**: Verify API keys in configuration
+4. **Network issues**: Check internet connectivity for free API sources
 
 ---
 

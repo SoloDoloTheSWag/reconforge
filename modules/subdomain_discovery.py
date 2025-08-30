@@ -75,13 +75,9 @@ class SubdomainDiscoveryEngine:
         self.results: Dict[str, SubdomainResult] = {}
         self.source_stats: Dict[str, int] = {}
         
-        # Discovery sources configuration
+        # Discovery sources configuration - FREE ONLY
         self.passive_sources = {
             'crt_sh': self._discover_crt_sh,
-            'virustotal': self._discover_virustotal,
-            'securitytrails': self._discover_securitytrails,
-            'shodan': self._discover_shodan,
-            'censys': self._discover_censys,
             'subfinder': self._discover_subfinder,
             'assetfinder': self._discover_assetfinder,
             'findomain': self._discover_findomain,
@@ -93,10 +89,10 @@ class SubdomainDiscoveryEngine:
             'rapiddns': self._discover_rapiddns,
             'dnsdumpster': self._discover_dnsdumpster,
             'certspotter': self._discover_certspotter,
-            'facebook': self._discover_facebook,
-            'spyse': self._discover_spyse,
             'bufferover': self._discover_bufferover,
-            'urlscan': self._discover_urlscan
+            'urlscan': self._discover_urlscan,
+            'anubis': self._discover_anubis,
+            'riddler': self._discover_riddler
         }
         
         self.active_sources = {
@@ -259,12 +255,11 @@ class SubdomainDiscoveryEngine:
             'dns_zone_transfer': ['dnsx'],
         }
         
-        # Sources that don't require tools (API/web-based)
+        # Sources that don't require tools (FREE API/web-based)
         no_tool_sources = [
-            'crt_sh', 'virustotal', 'securitytrails', 'shodan', 'censys',
-            'waybackmachine', 'alienvault', 'hackertarget', 'threatminer',
-            'rapiddns', 'dnsdumpster', 'certspotter', 'facebook', 'spyse',
-            'bufferover', 'urlscan', 'permutations', 'reverse_dns',
+            'crt_sh', 'waybackmachine', 'alienvault', 'hackertarget', 'threatminer',
+            'rapiddns', 'dnsdumpster', 'certspotter', 'bufferover', 'urlscan',
+            'anubis', 'riddler', 'permutations', 'reverse_dns',
             'certificate_transparency_active'
         ]
         
@@ -477,96 +472,94 @@ class SubdomainDiscoveryEngine:
         
         return []
     
-    def _discover_virustotal(self, config: DiscoveryConfig) -> List[str]:
-        """VirusTotal API discovery"""
-        api_key = self.utils.config.get_api_key('virustotal') if hasattr(self.utils, 'config') else None
-        if not api_key:
-            return []
-        
+    def _discover_anubis(self, config: DiscoveryConfig) -> List[str]:
+        """Free Anubis database discovery"""
         try:
             import requests
             
-            headers = {'x-apikey': api_key}
-            url = f"https://www.virustotal.com/vtapi/v2/domain/report"
-            params = {'apikey': api_key, 'domain': config.target}
-            
-            response = requests.get(url, headers=headers, params=params, timeout=30)
+            url = f"https://jldc.me/anubis/subdomains/{config.target}"
+            response = requests.get(url, timeout=30)
             
             if response.status_code == 200:
                 data = response.json()
-                subdomains = data.get('subdomains', [])
-                return [sub for sub in subdomains if sub.endswith(config.target)]
+                return [sub for sub in data if sub.endswith(config.target)]
         
         except Exception as e:
-            self.logger.log_error(f"VirusTotal discovery failed: {str(e)}", e)
+            self.logger.log_error(f"Anubis discovery failed: {str(e)}", e)
         
         return []
     
-    def _discover_securitytrails(self, config: DiscoveryConfig) -> List[str]:
-        """SecurityTrails API discovery"""
-        api_key = self.utils.config.get_api_key('securitytrails') if hasattr(self.utils, 'config') else None
-        if not api_key:
-            return []
-        
+    def _discover_riddler(self, config: DiscoveryConfig) -> List[str]:
+        """Free Riddler.io API discovery"""
         try:
             import requests
             
-            headers = {'APIKEY': api_key}
-            url = f"https://api.securitytrails.com/v1/domain/{config.target}/subdomains"
-            
-            response = requests.get(url, headers=headers, timeout=30)
+            url = f"https://riddler.io/search/exportcsv?q=pld:{config.target}"
+            response = requests.get(url, timeout=30)
             
             if response.status_code == 200:
-                data = response.json()
-                subdomains = data.get('subdomains', [])
-                return [f"{sub}.{config.target}" for sub in subdomains]
+                subdomains = set()
+                for line in response.text.split('\n'):
+                    if ',' in line:
+                        parts = line.split(',')
+                        if len(parts) > 5:
+                            subdomain = parts[5]  # 6th column contains subdomains
+                            if subdomain and subdomain.endswith(config.target):
+                                subdomains.add(subdomain.strip('"'))
+                return list(subdomains)
         
         except Exception as e:
-            self.logger.log_error(f"SecurityTrails discovery failed: {str(e)}", e)
+            self.logger.log_error(f"Riddler discovery failed: {str(e)}", e)
         
         return []
     
-    def _discover_shodan(self, config: DiscoveryConfig) -> List[str]:
-        """Shodan API discovery"""
-        api_key = self.utils.config.get_api_key('shodan') if hasattr(self.utils, 'config') else None
-        if not api_key:
-            return []
-        
+    def _discover_waybackmachine(self, config: DiscoveryConfig) -> List[str]:
+        """Internet Archive Wayback Machine discovery"""
         try:
             import requests
             
-            url = f"https://api.shodan.io/shodan/host/search"
-            params = {
-                'key': api_key,
-                'query': f'hostname:{config.target}',
-                'facets': 'hostname'
-            }
-            
-            response = requests.get(url, params=params, timeout=30)
+            url = f"http://web.archive.org/cdx/search/cdx?url=*.{config.target}/*&output=json&collapse=urlkey"
+            response = requests.get(url, timeout=60)
             
             if response.status_code == 200:
                 data = response.json()
                 subdomains = set()
                 
-                for match in data.get('matches', []):
-                    for hostname in match.get('hostnames', []):
-                        if hostname.endswith(config.target):
-                            subdomains.add(hostname)
+                for entry in data[1:]:  # Skip header
+                    if len(entry) > 2:
+                        url_part = entry[2]  # URL is in 3rd column
+                        if '://' in url_part:
+                            domain = url_part.split('://')[1].split('/')[0]
+                            if domain.endswith(config.target):
+                                subdomains.add(domain)
                 
                 return list(subdomains)
         
         except Exception as e:
-            self.logger.log_error(f"Shodan discovery failed: {str(e)}", e)
+            self.logger.log_error(f"Wayback Machine discovery failed: {str(e)}", e)
         
         return []
     
-    def _discover_censys(self, config: DiscoveryConfig) -> List[str]:
-        """Censys API discovery"""
-        api_key = self.utils.config.get_api_key('censys') if hasattr(self.utils, 'config') else None
-        if not api_key:
-            return []
+    def _discover_hackertarget(self, config: DiscoveryConfig) -> List[str]:
+        """Free HackerTarget.com API"""
+        try:
+            import requests
+            
+            url = f"https://api.hackertarget.com/hostsearch/?q={config.target}"
+            response = requests.get(url, timeout=30)
+            
+            if response.status_code == 200:
+                subdomains = []
+                for line in response.text.split('\n'):
+                    if ',' in line:
+                        subdomain = line.split(',')[0]
+                        if subdomain and subdomain.endswith(config.target):
+                            subdomains.append(subdomain)
+                return subdomains
         
-        # Censys API implementation would go here
+        except Exception as e:
+            self.logger.log_error(f"HackerTarget discovery failed: {str(e)}", e)
+        
         return []
     
     def _discover_subfinder(self, config: DiscoveryConfig) -> List[str]:
@@ -638,37 +631,207 @@ class SubdomainDiscoveryEngine:
         return []
     
     # Placeholder implementations for other sources
-    def _discover_waybackmachine(self, config: DiscoveryConfig) -> List[str]:
+    def _discover_rapiddns(self, config: DiscoveryConfig) -> List[str]:
+        """Free RapidDNS.io discovery"""
+        try:
+            import requests
+            from urllib.parse import quote
+            
+            url = f"https://rapiddns.io/subdomain/{config.target}?full=1"
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+            response = requests.get(url, headers=headers, timeout=30)
+            
+            if response.status_code == 200:
+                import re
+                subdomains = set()
+                # Extract subdomains from HTML table
+                pattern = rf'([a-zA-Z0-9.-]+\.{re.escape(config.target)})'
+                matches = re.findall(pattern, response.text)
+                for match in matches:
+                    subdomains.add(match)
+                return list(subdomains)
+        
+        except Exception as e:
+            self.logger.log_error(f"RapidDNS discovery failed: {str(e)}", e)
+        
         return []
     
     def _discover_alienvault(self, config: DiscoveryConfig) -> List[str]:
-        return []
-    
-    def _discover_hackertarget(self, config: DiscoveryConfig) -> List[str]:
+        """Free AlienVault OTX (now AT&T Alien Labs) API"""
+        try:
+            import requests
+            
+            url = f"https://otx.alienvault.com/api/v1/indicators/domain/{config.target}/passive_dns"
+            response = requests.get(url, timeout=30)
+            
+            if response.status_code == 200:
+                data = response.json()
+                subdomains = set()
+                
+                for record in data.get('passive_dns', []):
+                    hostname = record.get('hostname', '')
+                    if hostname and hostname.endswith(config.target):
+                        subdomains.add(hostname)
+                
+                return list(subdomains)
+        
+        except Exception as e:
+            self.logger.log_error(f"AlienVault OTX discovery failed: {str(e)}", e)
+        
         return []
     
     def _discover_threatminer(self, config: DiscoveryConfig) -> List[str]:
-        return []
-    
-    def _discover_rapiddns(self, config: DiscoveryConfig) -> List[str]:
+        """Free ThreatMiner.org API"""
+        try:
+            import requests
+            
+            url = f"https://api.threatminer.org/v2/domain.php?q={config.target}&rt=5"
+            response = requests.get(url, timeout=30)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('status_code') == '200':
+                    return data.get('results', [])
+        
+        except Exception as e:
+            self.logger.log_error(f"ThreatMiner discovery failed: {str(e)}", e)
+        
         return []
     
     def _discover_dnsdumpster(self, config: DiscoveryConfig) -> List[str]:
+        """Free DNSDumpster.com scraping"""
+        try:
+            import requests
+            import re
+            
+            session = requests.Session()
+            session.headers.update({
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            })
+            
+            # Get CSRF token
+            url = 'https://dnsdumpster.com/'
+            response = session.get(url, timeout=30)
+            
+            if response.status_code == 200:
+                csrf_token = None
+                csrf_pattern = r'<input[^>]+name=["\']csrfmiddlewaretoken["\'][^>]+value=["\']([^"\']+)["\']'
+                csrf_match = re.search(csrf_pattern, response.text)
+                
+                if csrf_match:
+                    csrf_token = csrf_match.group(1)
+                    
+                    # Submit form
+                    data = {
+                        'csrfmiddlewaretoken': csrf_token,
+                        'targetip': config.target,
+                        'user': 'free'
+                    }
+                    
+                    response = session.post(url, data=data, timeout=60)
+                    
+                    if response.status_code == 200:
+                        subdomains = set()
+                        # Extract subdomains from table
+                        subdomain_pattern = rf'([a-zA-Z0-9.-]+\.{re.escape(config.target)})'
+                        matches = re.findall(subdomain_pattern, response.text)
+                        for match in matches:
+                            subdomains.add(match)
+                        return list(subdomains)
+        
+        except Exception as e:
+            self.logger.log_error(f"DNSDumpster discovery failed: {str(e)}", e)
+        
         return []
     
     def _discover_certspotter(self, config: DiscoveryConfig) -> List[str]:
-        return []
-    
-    def _discover_facebook(self, config: DiscoveryConfig) -> List[str]:
-        return []
-    
-    def _discover_spyse(self, config: DiscoveryConfig) -> List[str]:
+        """Free CertSpotter API"""
+        try:
+            import requests
+            
+            url = f"https://api.certspotter.com/v1/issuances?domain={config.target}&include_subdomains=true&expand=dns_names"
+            response = requests.get(url, timeout=30)
+            
+            if response.status_code == 200:
+                data = response.json()
+                subdomains = set()
+                
+                for cert in data:
+                    dns_names = cert.get('dns_names', [])
+                    for name in dns_names:
+                        if name.endswith(config.target):
+                            if name.startswith('*.'):
+                                name = name[2:]
+                            subdomains.add(name)
+                
+                return list(subdomains)
+        
+        except Exception as e:
+            self.logger.log_error(f"CertSpotter discovery failed: {str(e)}", e)
+        
         return []
     
     def _discover_bufferover(self, config: DiscoveryConfig) -> List[str]:
+        """Free BufferOver.run API"""
+        try:
+            import requests
+            
+            url = f"https://dns.bufferover.run/dns?q=.{config.target}"
+            response = requests.get(url, timeout=30)
+            
+            if response.status_code == 200:
+                data = response.json()
+                subdomains = set()
+                
+                # Parse FDNS_A records
+                fdns_a = data.get('FDNS_A', [])
+                for record in fdns_a:
+                    if ',' in record:
+                        subdomain = record.split(',')[1]
+                        if subdomain and subdomain.endswith(config.target):
+                            subdomains.add(subdomain)
+                
+                # Parse RDNS records
+                rdns = data.get('RDNS', [])
+                for record in rdns:
+                    if ',' in record:
+                        subdomain = record.split(',')[1]
+                        if subdomain and subdomain.endswith(config.target):
+                            subdomains.add(subdomain)
+                
+                return list(subdomains)
+        
+        except Exception as e:
+            self.logger.log_error(f"BufferOver discovery failed: {str(e)}", e)
+        
         return []
     
     def _discover_urlscan(self, config: DiscoveryConfig) -> List[str]:
+        """Free URLScan.io API"""
+        try:
+            import requests
+            
+            url = f"https://urlscan.io/api/v1/search/?q=domain:{config.target}"
+            response = requests.get(url, timeout=30)
+            
+            if response.status_code == 200:
+                data = response.json()
+                subdomains = set()
+                
+                for result in data.get('results', []):
+                    page_url = result.get('page', {}).get('url', '')
+                    if '://' in page_url:
+                        domain = page_url.split('://')[1].split('/')[0]
+                        if domain.endswith(config.target):
+                            subdomains.add(domain)
+                
+                return list(subdomains)
+        
+        except Exception as e:
+            self.logger.log_error(f"URLScan discovery failed: {str(e)}", e)
+        
         return []
     
     # Active Discovery Sources

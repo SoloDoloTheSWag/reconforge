@@ -166,16 +166,8 @@ class ReconForgeConfig:
             },
             
             ConfigSection.API_KEYS.value: {
-                "shodan_api_key": None,
-                "virustotal_api_key": None,
-                "securitytrails_api_key": None,
-                "censys_api_id": None,
-                "censys_api_secret": None,
-                "facebook_ct_api_key": None,
-                "dnsdb_api_key": None,
-                "whoisxml_api_key": None,
-                "binaryedge_api_key": None,
-                "spyse_api_key": None
+                # FREE RESOURCES ONLY - No API keys required
+                # All reconnaissance now uses free public APIs and tools
             },
             
             ConfigSection.TOOLS.value: {
