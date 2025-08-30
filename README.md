@@ -2,7 +2,7 @@
 
 **Terminal-First Professional Reconnaissance Platform**
 
-[![Version](https://img.shields.io/badge/version-2.0.1-blue.svg)](https://github.com/yourusername/reconforge)
+[![Version](https://img.shields.io/badge/version-2.0.1-blue.svg)](https://github.com/yourusername/reconforge-terminal)
 [![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://python.org)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Security](https://img.shields.io/badge/security-professional-red.svg)](#security)
@@ -31,8 +31,8 @@ ReconForge v2.0.1 is a **complete rebuild** of the reconnaissance platform, desi
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/reconforge.git
-cd reconforge
+git clone https://github.com/yourusername/reconforge-terminal.git
+cd reconforge-terminal
 
 # Install Python dependencies
 pip3 install rich requests
@@ -345,8 +345,8 @@ CREATE TABLE vulnerabilities (
 ### **Development Setup**
 ```bash
 # Clone for development
-git clone https://github.com/yourusername/reconforge.git
-cd reconforge
+git clone https://github.com/yourusername/reconforge-terminal.git
+cd reconforge-terminal
 
 # Install development dependencies
 pip3 install -r requirements-dev.txt
