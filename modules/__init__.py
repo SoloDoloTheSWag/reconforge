@@ -9,6 +9,7 @@ from . import port_scanning
 from . import web_enumeration
 from . import sql_injection
 from . import exploitation
+from . import metasploit_integration
 
 __all__ = [
     'subdomain_discovery',
@@ -16,5 +17,6 @@ __all__ = [
     'port_scanning',
     'web_enumeration',
     'sql_injection',
-    'exploitation'
+    'exploitation',
+    'metasploit_integration'
 ]
